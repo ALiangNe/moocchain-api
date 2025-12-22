@@ -29,7 +29,7 @@ npm install
 npm run dev
 ```
 
-Server runs on `http://localhost:6000` with hot-reload enabled.
+Server runs on `http://localhost:6700` with hot-reload enabled.
 
 ### Production
 
