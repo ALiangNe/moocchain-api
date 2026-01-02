@@ -1,13 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import './config/env';
 import { testDatabaseConnection } from './config/database';
-import userRoutes from './routes/userRoute';
+import userRoutes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 6700;
 
 app.use(cors({ origin: 'http://localhost:6600', credentials: true, }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

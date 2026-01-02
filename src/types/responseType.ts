@@ -3,6 +3,7 @@ export interface ResponseType<T> {
   code: number;
   message: string;
   data?: T;
-  token?: string;
+  accessToken?: string;
+  refreshToken?: string;
 }
 

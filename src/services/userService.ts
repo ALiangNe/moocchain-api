@@ -1,17 +1,12 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
-import type { StringValue } from 'ms';
-import { getUser, postUser } from '../models/userModel';
 import { UserInfo } from '../types/userType';
+import { getUser, postUser } from '../models/userModel';
+import { signAccessToken, signRefreshToken, storeRefreshTokenForUser } from './authService';
 
-const JWT_SECRET = (process.env.JWT_SECRET ) as string;
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN ) as StringValue;
-
-function signToken(payload: object): string {
-  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN };
-  return jwt.sign(payload, JWT_SECRET, options);
-}
-
-export async function loginService(data: UserInfo): Promise<{ user: UserInfo; token: string }> {
+/**
+ * 登录服务
+ * 验证用户名密码，生成双 Token 并存储 refreshToken
+ */
+export async function loginService(data: UserInfo): Promise<{ user: UserInfo; accessToken: string; refreshToken: string }> {
   let result;
   try {
     result = await getUser({ username: data.username, password: data.password });
@@ -20,18 +15,27 @@ export async function loginService(data: UserInfo): Promise<{ user: UserInfo; to
     throw error;
   }
   
-  if (!result) {
+  if (!result || !result.userId || !result.username) {
     throw new Error('Invalid username or password');
   }
   
-  const token = signToken({ userId: result.userId, username: result.username });
+  const accessToken = signAccessToken({ userId: result.userId, username: result.username, role: result.role });
+  const refreshToken = signRefreshToken({ userId: result.userId, username: result.username, role: result.role });
+  
+  // 存储 refresh token
+  storeRefreshTokenForUser(refreshToken, result.userId, result.username);
   
   return {
     user: result,
-    token,
+    accessToken,
+    refreshToken,
   };
 }
 
+/**
+ * 注册服务
+ * 检查用户名是否已存在，创建新用户账户
+ */
 export async function registerService(data: UserInfo): Promise<UserInfo> {
   const { username } = data;
 
