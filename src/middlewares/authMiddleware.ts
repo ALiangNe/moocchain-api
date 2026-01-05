@@ -32,10 +32,9 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 
   // 验证 access token，decoded 是解码后的数据
+  let decoded: { userId: number; username: string; role?: number };
   try {
-    const decoded = jwt.verify(token, JWT_ACCESS_SECRET as string) as { userId: number; username: string; role?: number };
-    req.user = decoded;
-    return next();
+    decoded = jwt.verify(token, JWT_ACCESS_SECRET as string) as { userId: number; username: string; role?: number };
   } catch (error) {
     console.error('JWT verify failed:', error);
     const response: ResponseType<UserInfo> = {
@@ -44,6 +43,18 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
     };
     return res.status(401).json(response);
   }
+
+  // 验证 userId 是否存在
+  if (!decoded.userId) {
+    const response: ResponseType<UserInfo> = {
+      code: StatusCode.UNAUTHORIZED,
+      message: 'User ID not found in token',
+    };
+    return res.status(401).json(response);
+  }
+
+  req.user = decoded;
+  return next();
 }
 
 

@@ -86,3 +86,65 @@ export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
   return users[0];
 }
 
+/**
+ * 更新用户信息
+ * 根据 userId 更新用户个人信息，只允许更新特定字段
+ */
+export async function putUser(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
+  // 允许更新的字段
+  const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName'];
+  
+  const updateFields: string[] = [];
+  const values: any[] = [];
+
+  // 动态构建 UPDATE 语句
+  allowedFields.forEach(field => {
+    if (data[field as keyof UserInfo] !== undefined) {
+      updateFields.push(`${field} = ?`);
+      values.push(data[field as keyof UserInfo]);
+    }
+  });
+
+  if (updateFields.length === 0) {
+    throw new Error('No valid fields to update');
+  }
+
+  // 添加 updatedAt 字段
+  const now = new Date();
+  updateFields.push('updatedAt = ?');
+  values.push(now);
+
+  // 添加 userId 到参数列表
+  values.push(userId);
+
+  // 执行更新
+  try {
+    await dbPool.query(
+      `UPDATE user SET ${updateFields.join(', ')} WHERE userId = ?`,
+      values
+    );
+  } catch (error) {
+    console.error('Update user failed:', error);
+    throw error;
+  }
+
+  // 查询并返回更新后的用户信息
+  let rows;
+  try {
+    [rows] = await dbPool.query(
+      'SELECT userId, username, email, walletAddress, certificateFile, realName, phone, idCard, avatar, gender, role, walletBound, tokenBalance, schoolName, createdAt, updatedAt FROM user WHERE userId = ?',
+      [userId]
+    );
+  } catch (error) {
+    console.error('Get user failed:', error);
+    throw error;
+  }
+
+  const users = rows as UserInfo[];
+  if (users.length === 0) {
+    throw new Error('User not found after update');
+  }
+
+  return users[0];
+}
+

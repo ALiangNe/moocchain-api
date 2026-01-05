@@ -1,5 +1,5 @@
 import { UserInfo } from '../types/userType';
-import { getUser, postUser } from '../models/userModel';
+import { getUser, postUser, putUser } from '../models/userModel';
 import { signAccessToken, signRefreshToken, storeRefreshTokenForUser } from './authService';
 
 /**
@@ -55,6 +55,51 @@ export async function registerService(data: UserInfo): Promise<UserInfo> {
     result = await postUser(data);
   } catch (error) {
     console.error('Register service error:', error);
+    throw error;
+  }
+
+  return result;
+}
+
+/**
+ * 更新用户信息服务
+ * 更新用户个人信息，不允许修改敏感字段（username, password, role等）
+ */
+export async function updateUserService(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
+  // 检查用户是否存在
+  let existingUser;
+  try {
+    existingUser = await getUser({ userId });
+  } catch (error) {
+    console.error('Update user service error:', error);
+    throw error;
+  }
+
+  if (!existingUser) {
+    throw new Error('User not found');
+  }
+
+  // 如果更新邮箱，检查邮箱是否已被其他用户使用
+  if (data.email && data.email !== existingUser.email) {
+    let emailUser;
+    try {
+      emailUser = await getUser({ email: data.email });
+    } catch (error) {
+      console.error('Update user service error:', error);
+      throw error;
+    }
+
+    if (emailUser && emailUser.userId !== userId) {
+      throw new Error('Email already in use');
+    }
+  }
+
+  // 更新用户信息
+  let result;
+  try {
+    result = await putUser(userId, data);
+  } catch (error) {
+    console.error('Update user service error:', error);
     throw error;
   }
 

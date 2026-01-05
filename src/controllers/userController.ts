@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { registerService, loginService } from '../services/userService';
+import { registerService, loginService, updateUserService } from '../services/userService';
 import { UserInfo } from '../types/userType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
+import { AuthRequest } from '../middlewares/authMiddleware';
 
 /**
  * 用户登录
@@ -70,4 +71,32 @@ export async function registerController(req: Request, res: Response) {
     data: result,
   };
   return res.status(201).json(response);
+}
+
+/**
+ * 更新用户信息
+ * 根据 token 中的 userId 更新用户个人信息
+ */
+export async function updateUserController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+  const data = req.body as Partial<UserInfo>;
+
+  let result;
+  try {
+    result = await updateUserService(userId, data);
+  } catch (error) {
+    console.error('Update user controller error:', error);
+    const response: ResponseType<UserInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Update user failed',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<UserInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'User information updated successfully',
+    data: result,
+  };
+  return res.status(200).json(response);
 }

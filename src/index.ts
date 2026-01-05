@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import './config/env';
 import { testDatabaseConnection } from './config/database';
 import userRoutes from './routes';
@@ -12,6 +13,9 @@ app.use(cors({ origin: 'http://localhost:6600', credentials: true, }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 静态文件服务：提供上传的头像文件
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/', (req, res) => { res.json({ message: 'Express + TypeScript 服务器运行成功！' }); });
 app.use('/api/user', userRoutes);
