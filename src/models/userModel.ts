@@ -1,6 +1,10 @@
 import { dbPool } from '../config/database';
 import { UserInfo } from '../types/userType';
 
+/**
+ * 查询用户
+ * 根据条件动态构建查询语句，支持按 userId、username、password、email 查询
+ */
 export async function getUser(conditions: Partial<UserInfo>): Promise<UserInfo | null> {
   const { userId, username, password, email } = conditions;
   
@@ -41,6 +45,10 @@ export async function getUser(conditions: Partial<UserInfo>): Promise<UserInfo |
   return users.length > 0 ? users[0] : null;
 }
 
+/**
+ * 创建用户
+ * 插入新用户到数据库，默认角色为学生(5)，创建后返回完整用户信息
+ */
 export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
   const { username, password, email } = data;
 

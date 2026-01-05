@@ -4,7 +4,7 @@ import { parseExpiresIn } from '../utils/timeUtils';
 
 // JWT 配置
 const JWT_ACCESS_SECRET = (process.env.JWT_ACCESS_SECRET || 'dev-secret') as string;
-const JWT_ACCESS_EXPIRES_IN = (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as StringValue;
+const JWT_ACCESS_EXPIRES_IN = (process.env.JWT_ACCESS_EXPIRES_IN || '2h') as StringValue;
 const JWT_REFRESH_SECRET = (process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret') as string;
 const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as StringValue;
 

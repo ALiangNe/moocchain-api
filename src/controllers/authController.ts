@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
-import { refreshAccessToken } from '../services/authService';
+import { refreshAccessToken, deleteRefreshToken } from '../services/authService';
+import { getUser } from '../models/userModel';
+import { UserInfo } from '../types/userType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
-import { deleteRefreshToken } from '../services/authService';
+import { AuthRequest } from '../middlewares/authMiddleware';
 
 /**
  * 刷新 Access Token
@@ -42,6 +44,7 @@ export async function refreshTokenController(req: Request, res: Response) {
   });
 
   // 响应中只返回 accessToken，不返回 refreshToken（已在 Cookie 中）
+  // 前端需要调用 getUser API 获取完整的用户信息
   const response: ResponseType<never> = {
     code: StatusCode.SUCCESS,
     message: 'Token refreshed successfully',
@@ -75,6 +78,44 @@ export async function logoutController(req: Request, res: Response) {
   const response: ResponseType<never> = {
     code: StatusCode.SUCCESS,
     message: 'Logout successful',
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 获取当前用户信息
+ * 需要认证，从 token 中获取 userId，然后查询数据库返回完整用户信息
+ */
+export async function getCurrentUserController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+
+  let user;
+  try {
+    user = await getUser({ userId });
+  } catch (error) {
+    console.error('Get current user error:', error);
+    const response: ResponseType<UserInfo> = {
+      code: StatusCode.INTERNAL_SERVER_ERROR,
+      message: 'Failed to get user information',
+    };
+    return res.status(500).json(response);
+  }
+
+  if (!user) {
+    const response: ResponseType<UserInfo> = {
+      code: StatusCode.NOT_FOUND,
+      message: 'User not found',
+    };
+    return res.status(404).json(response);
+  }
+
+  // 不返回密码字段
+  const { password, ...userWithoutPassword } = user;
+
+  const response: ResponseType<UserInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Get user information successful',
+    data: userWithoutPassword,
   };
   return res.status(200).json(response);
 }
