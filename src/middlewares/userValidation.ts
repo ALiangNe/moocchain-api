@@ -44,7 +44,7 @@ export function validateUpdateUser(req: Request, res: Response, next: NextFuncti
   const data = req.body as Partial<UserInfo>;
 
   // 检查是否至少有一个可更新的字段
-  const updatableFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName'];
+  const updatableFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile'];
   const hasValidField = updatableFields.some(field => data[field as keyof UserInfo] !== undefined);
 
   if (!hasValidField) {

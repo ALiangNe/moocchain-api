@@ -92,7 +92,7 @@ export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
  */
 export async function putUser(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
   // 允许更新的字段
-  const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName'];
+  const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile'];
   
   const updateFields: string[] = [];
   const values: any[] = [];
@@ -125,6 +125,44 @@ export async function putUser(userId: number, data: Partial<UserInfo>): Promise<
     );
   } catch (error) {
     console.error('Update user failed:', error);
+    throw error;
+  }
+
+  // 查询并返回更新后的用户信息
+  let rows;
+  try {
+    [rows] = await dbPool.query(
+      'SELECT userId, username, email, walletAddress, certificateFile, realName, phone, idCard, avatar, gender, role, walletBound, tokenBalance, schoolName, createdAt, updatedAt FROM user WHERE userId = ?',
+      [userId]
+    );
+  } catch (error) {
+    console.error('Get user failed:', error);
+    throw error;
+  }
+
+  const users = rows as UserInfo[];
+  if (users.length === 0) {
+    throw new Error('User not found after update');
+  }
+
+  return users[0];
+}
+
+/**
+ * 更新用户角色
+ * 根据 userId 更新用户角色
+ */
+export async function updateUserRole(userId: number, role: number): Promise<UserInfo> {
+  const now = new Date();
+
+  // 执行更新
+  try {
+    await dbPool.query(
+      'UPDATE user SET role = ?, updatedAt = ? WHERE userId = ?',
+      [role, now, userId]
+    );
+  } catch (error) {
+    console.error('Update user role failed:', error);
     throw error;
   }
 
