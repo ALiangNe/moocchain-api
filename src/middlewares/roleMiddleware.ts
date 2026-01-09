@@ -10,9 +10,11 @@ export const ROLE_STUDENT = 5;
 
 /**
  * 检查用户角色
- * @param role 角色值：0=管理员，4=教师，5=学生
+ * @param roles 角色值数组：0=管理员，4=教师，5=学生
+ * @example checkRole(0) - 只允许管理员
+ * @example checkRole(0, 4) - 允许管理员或教师
  */
-export function checkRole(role: number) {
+export function checkRole(...roles: number[]) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       const response: ResponseType<any> = {
@@ -22,15 +24,20 @@ export function checkRole(role: number) {
       return res.status(401).json(response);
     }
 
-    if (req.user.role !== role) {
+    const userRole = req.user.role;
+    if (userRole === undefined || !roles.includes(userRole)) {
       const roleNames: Record<number, string> = {
         0: 'Admin',
         4: 'Teacher',
         5: 'Student',
       };
+      const allowedRoles = roles.map((role: number) => {
+        const roleName = roleNames[role];
+        return roleName || `Role ${role}`;
+      }).join(' or ');
       const response: ResponseType<any> = {
         code: StatusCode.FORBIDDEN,
-        message: `${roleNames[role] || 'Required'} access required`,
+        message: `${allowedRoles} access required`,
       };
       return res.status(403).json(response);
     }

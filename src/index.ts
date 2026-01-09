@@ -14,11 +14,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 静态文件服务：提供上传的头像文件
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 app.get('/', (req, res) => { res.json({ message: 'Express + TypeScript 服务器运行成功！' }); });
-app.use('/api/user', userRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api', userRoutes);
 
 async function bootstrap() {
   try {

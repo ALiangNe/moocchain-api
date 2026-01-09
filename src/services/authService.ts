@@ -1,6 +1,6 @@
 import type { StringValue } from 'ms';
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { parseExpiresIn } from '../utils/timeUtils';
+import { parseExpiresIn } from '../utils/formatTime';
 
 // JWT 配置
 const JWT_ACCESS_SECRET = (process.env.JWT_ACCESS_SECRET || 'dev-secret') as string;
