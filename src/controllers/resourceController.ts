@@ -1,0 +1,245 @@
+import { Request, Response } from 'express';
+import { createResourceService, updateResourceService, getResourceListService, getResourceService } from '../services/resourceService';
+import { ResourceInfo } from '../types/resourceType';
+import { ResponseType } from '../types/responseType';
+import { StatusCode } from '../constants/statusCode';
+import { AuthRequest } from '../middlewares/authMiddleware';
+
+/**
+ * 创建资源
+ * 教师在自己创建的课程中创建资源，支持文件上传
+ */
+export async function createResourceController(req: AuthRequest, res: Response) {
+  const teacherId = req.user!.userId;
+  
+  // 验证文件是否上传
+  if (!req.file) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: '请选择要上传的资源文件',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 从请求体中获取其他参数（使用 multer 后，body 中会包含表单字段）
+  const params = req.body as Partial<ResourceInfo> & { courseId: string; title?: string };
+
+  // 验证必需字段
+  if (!params.courseId) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'courseId is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  if (!params.title) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'title is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 courseId
+  const courseId = parseInt(params.courseId);
+  if (isNaN(courseId) || courseId <= 0) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid courseId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 根据文件类型自动设置 resourceType
+  // 0:其他，1:文档，2:音频，3:视频
+  let resourceType = 0;
+  const mimeType = req.file.mimetype;
+  
+  // 文档类型
+  if (
+    mimeType === 'application/pdf' ||
+    mimeType === 'application/msword' ||
+    mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mimeType === 'application/vnd.ms-excel' ||
+    mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ) {
+    resourceType = 1;
+  }
+  // 音频类型
+  else if (
+    mimeType.startsWith('audio/')
+  ) {
+    resourceType = 2;
+  }
+  // 视频类型
+  else if (
+    mimeType.startsWith('video/')
+  ) {
+    resourceType = 3;
+  }
+
+  // 文件路径（暂时存储在 ipfsHash 字段中，后续对接 IPFS 时需要修改）
+  const filePath = `/uploads/resources/${req.file.filename}`;
+
+  let data;
+  try {
+    // 构建资源参数
+    const resourceParams: Partial<ResourceInfo> = {
+      courseId,
+      title: params.title,
+      description: params.description,
+      resourceType,
+      price: params.price !== undefined ? parseFloat(params.price as any) : undefined,
+      accessScope: params.accessScope !== undefined ? parseInt(params.accessScope as any) : undefined,
+      status: params.status !== undefined ? parseInt(params.status as any) : undefined,
+      ipfsHash: filePath, // 暂时使用文件路径，后续对接 IPFS
+    };
+
+    data = await createResourceService(teacherId, resourceParams);
+  } catch (error) {
+    console.error('Create resource controller error:', error);
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to create resource',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<ResourceInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Resource created successfully',
+    data: data,
+  };
+  return res.status(201).json(response);
+}
+
+/**
+ * 更新资源
+ * 教师更新自己创建的资源信息
+ */
+export async function updateResourceController(req: AuthRequest, res: Response) {
+  const teacherId = req.user!.userId;
+  const resourceId = parseInt(req.params.resourceId);
+  const params = req.body as Partial<ResourceInfo>;
+
+  // 验证 resourceId
+  if (!resourceId || isNaN(resourceId) || resourceId <= 0) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    data = await updateResourceService(teacherId, resourceId, params);
+  } catch (error) {
+    console.error('Update resource controller error:', error);
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to update resource',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<ResourceInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Resource updated successfully',
+    data: data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 获取资源列表
+ * 支持条件筛选和分页
+ */
+export async function getResourceListController(req: AuthRequest, res: Response) {
+  const { courseId, ownerId, resourceType, status } = req.query;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+  const params: Partial<ResourceInfo> = {};
+
+  if (courseId) {
+    const courseIdNum = parseInt(courseId as string);
+    if (!isNaN(courseIdNum)) {
+      params.courseId = courseIdNum;
+    }
+  }
+  if (ownerId) {
+    const ownerIdNum = parseInt(ownerId as string);
+    if (!isNaN(ownerIdNum)) {
+      params.ownerId = ownerIdNum;
+    }
+  }
+  if (resourceType !== undefined) {
+    const resourceTypeNum = parseInt(resourceType as string);
+    if (!isNaN(resourceTypeNum)) {
+      params.resourceType = resourceTypeNum;
+    }
+  }
+  if (status !== undefined) {
+    const statusNum = parseInt(status as string);
+    if (!isNaN(statusNum)) {
+      params.status = statusNum;
+    }
+  }
+
+  let data;
+  try {
+    data = await getResourceListService(params, page, pageSize);
+  } catch (error) {
+    console.error('Get resource list controller error:', error);
+    const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
+      code: StatusCode.INTERNAL_SERVER_ERROR,
+      message: 'Failed to get resource list',
+    };
+    return res.status(500).json(response);
+  }
+
+  const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
+    code: StatusCode.SUCCESS,
+    message: 'Get resource list successfully',
+    data: data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 获取资源详情
+ * 根据资源ID获取资源信息
+ */
+export async function getResourceController(req: AuthRequest, res: Response) {
+  const resourceId = parseInt(req.params.resourceId);
+
+  // 验证 resourceId
+  if (!resourceId || isNaN(resourceId) || resourceId <= 0) {
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    data = await getResourceService(resourceId);
+  } catch (error) {
+    console.error('Get resource controller error:', error);
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to get resource',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<ResourceInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Get resource successfully',
+    data: data,
+  };
+  return res.status(200).json(response);
+}

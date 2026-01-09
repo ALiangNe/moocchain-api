@@ -1,6 +1,7 @@
 import { AuditRecordInfo } from '../types/auditRecordType';
-import { createTeacherApplicationModel, approveTeacherApplicationModel, getAuditRecordListModel } from '../models/auditRecordModel';
+import { createTeacherApplicationModel, approveTeacherApplicationModel, approveResourceApplicationModel, getAuditRecordListModel } from '../models/auditRecordModel';
 import { getUser, updateUserRole } from '../models/userModel';
+import { putResource } from '../models/resourceModel';
 import { ROLE_STUDENT, ROLE_TEACHER, ROLE_ADMIN } from '../middlewares/roleMiddleware';
 
 /**
@@ -69,6 +70,48 @@ export async function approveTeacherApplicationService(
   return {
     auditRecord,
     user: updatedUser,
+  };
+}
+
+/**
+ * 审批资源申请
+ * 管理员审批教师上传的资源
+ */
+export async function approveResourceApplicationService(
+  adminId: number,
+  params: Partial<AuditRecordInfo> & { auditId: number; auditStatus: number }
+): Promise<{ auditRecord: AuditRecordInfo; resource?: any }> {
+  // 检查管理员是否存在
+  const admin = await getUser({ userId: adminId });
+  if (!admin) {
+    throw new Error('Admin not found');
+  }
+
+  // 检查管理员角色
+  if (admin.role !== ROLE_ADMIN) {
+    throw new Error('Only admins can approve resources');
+  }
+
+  // 审批审核记录（model层已包含验证逻辑）
+  const { auditRecord, resourceId } = await approveResourceApplicationModel(
+    params.auditId,
+    adminId,
+    params.auditStatus,
+    params.auditComment
+  );
+
+  // 如果审核通过，更新资源状态为已审核（status = 1）
+  let updatedResource = null;
+  if (params.auditStatus === 1) {
+    updatedResource = await putResource(resourceId, { status: 1 });
+  } else if (params.auditStatus === 2) {
+    // 如果审核拒绝，资源状态可以保持为0（待审核）或设置为其他状态
+    // 根据业务需求，这里保持原状态
+  }
+
+  return {
+    auditRecord,
+    resource: updatedResource,
   };
 }
 

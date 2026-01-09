@@ -57,6 +57,45 @@ export async function createTeacherApplicationModel(
 }
 
 /**
+ * 创建资源审核记录
+ * 资源创建后自动创建审核记录（待审核状态）
+ */
+export async function createResourceAuditModel(
+  resourceId: number,
+  ownerId: number
+): Promise<AuditRecordInfo> {
+  // 创建审核记录
+  // auditType = 1 (资源内容), targetType = 2 (资源)
+  let result;
+  try {
+    [result] = await dbPool.query(
+      'INSERT INTO auditRecord (auditType, targetId, targetType, auditorId, auditStatus) VALUES (?, ?, ?, ?, ?)',
+      [1, resourceId, 2, ownerId, 0]
+    );
+  } catch (error) {
+    console.error('Create resource audit record failed:', error);
+    throw error;
+  }
+
+  const insertResult = result as { insertId: number };
+
+  // 查询并返回创建的审核记录
+  let rows;
+  try {
+    [rows] = await dbPool.query(
+      'SELECT auditId, auditType, targetId, targetType, auditorId, auditStatus, auditComment, auditTime, createdAt FROM auditRecord WHERE auditId = ?',
+      [insertResult.insertId]
+    );
+  } catch (error) {
+    console.error('Get audit record failed:', error);
+    throw error;
+  }
+
+  const records = rows as AuditRecordInfo[];
+  return records[0];
+}
+
+/**
  * 审批教师申请
  * 更新审核记录状态，如果通过则返回更新后的记录和用户信息
  */
@@ -85,7 +124,7 @@ export async function approveTeacherApplicationModel(
 
   const auditRecord = records[0];
 
-  // 检查审核记录类型
+  // 检查审核记录类型（1 = 资源内容或用户身份，这里支持两种）
   if (auditRecord.auditType !== 1) {
     throw new Error('Invalid audit type');
   }
@@ -154,6 +193,103 @@ export async function approveTeacherApplicationModel(
 }
 
 /**
+ * 审批资源申请
+ * 更新审核记录状态，如果通过则返回更新后的记录和资源ID
+ */
+export async function approveResourceApplicationModel(
+  auditId: number,
+  adminId: number,
+  auditStatus: number,
+  auditComment?: string
+): Promise<{ auditRecord: AuditRecordInfo; resourceId: number }> {
+  // 获取审核记录
+  let rows;
+  try {
+    [rows] = await dbPool.query(
+      'SELECT auditId, auditType, targetId, targetType, auditStatus FROM auditRecord WHERE auditId = ?',
+      [auditId]
+    );
+  } catch (error) {
+    console.error('Get audit record failed:', error);
+    throw error;
+  }
+
+  const records = rows as AuditRecordInfo[];
+  if (records.length === 0) {
+    throw new Error('Audit record not found');
+  }
+
+  const auditRecord = records[0];
+
+  // 检查审核记录类型和目标类型
+  if (auditRecord.auditType !== 1 || auditRecord.targetType !== 2) {
+    throw new Error('Invalid audit type or target type');
+  }
+
+  // 检查审核状态
+  if (auditRecord.auditStatus !== 0) {
+    throw new Error('This resource has already been processed');
+  }
+
+  // 检查审核状态值
+  if (auditStatus !== 1 && auditStatus !== 2) {
+    throw new Error('Invalid audit status');
+  }
+
+  // 更新审核记录
+  const updateFields: string[] = [];
+  const values: any[] = [];
+
+  updateFields.push('auditStatus = ?');
+  values.push(auditStatus);
+  
+  if (auditComment !== undefined) {
+    updateFields.push('auditComment = ?');
+    values.push(auditComment);
+  }
+  
+  updateFields.push('auditorId = ?');
+  values.push(adminId);
+  
+  // 设置审核时间
+  updateFields.push('auditTime = NOW()');
+
+  values.push(auditId);
+
+  try {
+    await dbPool.query(
+      `UPDATE auditRecord SET ${updateFields.join(', ')} WHERE auditId = ?`,
+      values
+    );
+  } catch (error) {
+    console.error('Update audit record failed:', error);
+    throw error;
+  }
+
+  // 查询并返回更新后的审核记录
+  let updatedRows;
+  try {
+    [updatedRows] = await dbPool.query(
+      'SELECT auditId, auditType, targetId, targetType, auditorId, auditStatus, auditComment, auditTime, createdAt FROM auditRecord WHERE auditId = ?',
+      [auditId]
+    );
+  } catch (error) {
+    console.error('Get audit record failed:', error);
+    throw error;
+  }
+
+  const updatedRecords = updatedRows as AuditRecordInfo[];
+  if (updatedRecords.length === 0) {
+    throw new Error('Audit record not found after update');
+  }
+
+  return {
+    auditRecord: updatedRecords[0],
+    resourceId: auditRecord.targetId!,
+  };
+}
+
+/**
  * 获取审核记录列表
  * 支持分页和条件筛选
  */
@@ -211,14 +347,17 @@ export async function getAuditRecordListModel(
   try {
     [rows] = await dbPool.query(
       `SELECT 
-        ar.auditId, ar.auditType, ar.targetId, ar.targetType, ar.auditorId, 
-        ar.auditStatus, ar.auditComment, ar.auditTime, ar.createdAt,
-        u.userId as targetUserId, u.username as targetUsername, u.email as targetEmail,
-        u.realName as targetRealName, u.phone as targetPhone, u.schoolName as targetSchoolName,
-        u.certificateFile as targetCertificateFile, u.role as targetRole,
-        au.userId as auditorUserId, au.username as auditorUsername
+        ar.auditId, ar.auditType, ar.targetId, ar.targetType, ar.auditorId, ar.auditStatus, ar.auditComment, ar.auditTime, ar.createdAt,
+        u.userId as targetUserId, u.username as targetUsername, u.email as targetEmail, u.realName as targetRealName, u.phone as targetPhone, u.schoolName as targetSchoolName, u.certificateFile as targetCertificateFile, u.role as targetRole, u.avatar as targetAvatar,
+        r.resourceId, r.title as resourceTitle, r.description as resourceDescription, r.resourceType as resourceResourceType, r.price as resourcePrice, r.status as resourceStatus, r.ownerId as resourceOwnerId, r.courseId as resourceCourseId, r.createdAt as resourceCreatedAt, r.ipfsHash as resourceIpfsHash,
+        ou.userId as ownerUserId, ou.username as ownerUsername, ou.email as ownerEmail, ou.realName as ownerRealName, ou.schoolName as ownerSchoolName, ou.avatar as ownerAvatar,
+        c.courseId as courseCourseId, c.courseName as courseCourseName, c.coverImage as courseCoverImage,
+        au.userId as auditorUserId, au.username as auditorUsername, au.email as auditorEmail, au.realName as auditorRealName
       FROM auditRecord ar
       LEFT JOIN user u ON ar.targetId = u.userId AND ar.targetType = 1
+      LEFT JOIN resource r ON ar.targetId = r.resourceId AND ar.targetType = 2
+      LEFT JOIN user ou ON r.ownerId = ou.userId
+      LEFT JOIN course c ON r.courseId = c.courseId
       LEFT JOIN user au ON ar.auditorId = au.userId
       ${whereClause} 
       ORDER BY ar.createdAt DESC 
@@ -240,7 +379,7 @@ export async function getAuditRecordListModel(
     auditComment: row.auditComment,
     auditTime: row.auditTime,
     createdAt: row.createdAt,
-    // 返回完整的用户对象
+    // 返回完整的用户对象（targetType = 1时）
     targetUser: row.targetUserId ? {
       userId: row.targetUserId,
       username: row.targetUsername,
@@ -250,10 +389,39 @@ export async function getAuditRecordListModel(
       schoolName: row.targetSchoolName,
       certificateFile: row.targetCertificateFile,
       role: row.targetRole,
+      avatar: row.targetAvatar,
+    } : null,
+    // 返回资源信息（targetType = 2时）
+    targetResource: row.resourceId ? {
+      resourceId: row.resourceId,
+      title: row.resourceTitle,
+      description: row.resourceDescription,
+      resourceType: row.resourceResourceType,
+      price: row.resourcePrice,
+      status: row.resourceStatus,
+      ownerId: row.resourceOwnerId,
+      courseId: row.resourceCourseId,
+      createdAt: row.resourceCreatedAt,
+      ipfsHash: row.resourceIpfsHash,
+      owner: row.ownerUserId ? {
+        userId: row.ownerUserId,
+        username: row.ownerUsername,
+        email: row.ownerEmail,
+        realName: row.ownerRealName,
+        schoolName: row.ownerSchoolName,
+        avatar: row.ownerAvatar,
+      } : null,
+      course: row.courseCourseId ? {
+        courseId: row.courseCourseId,
+        courseName: row.courseCourseName,
+        coverImage: row.courseCoverImage,
+      } : null,
     } : null,
     auditor: row.auditorUserId ? {
       userId: row.auditorUserId,
       username: row.auditorUsername,
+      email: row.auditorEmail,
+      realName: row.auditorRealName,
     } : null,
   }));
   

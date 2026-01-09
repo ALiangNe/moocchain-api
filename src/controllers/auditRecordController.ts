@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createTeacherApplicationService, approveTeacherApplicationService, getAuditRecordListService } from '../services/auditRecordService';
+import { createTeacherApplicationService, approveTeacherApplicationService, approveResourceApplicationService, getAuditRecordListService } from '../services/auditRecordService';
 import { AuditRecordInfo } from '../types/auditRecordType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
@@ -141,6 +141,63 @@ export async function getAuditRecordListController(req: AuthRequest, res: Respon
   const response: ResponseType<{ records: AuditRecordInfo[]; total: number }> = {
     code: StatusCode.SUCCESS,
     message: 'Get audit record list successfully',
+    data: data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 审批资源申请
+ * 管理员审批教师上传的资源
+ */
+export async function approveResourceApplicationController(req: AuthRequest, res: Response) {
+  const adminId = req.user!.userId;
+  const params = req.body as Partial<AuditRecordInfo> & { auditId: number; auditStatus: number };
+
+  // 验证必需字段
+  if (!params.auditId || params.auditStatus === undefined) {
+    const response: ResponseType<AuditRecordInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'auditId and auditStatus are required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证auditId是数字
+  if (typeof params.auditId !== 'number' || params.auditId <= 0) {
+    const response: ResponseType<AuditRecordInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'auditId must be a positive number',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证审核状态
+  if (params.auditStatus !== 1 && params.auditStatus !== 2) {
+    const response: ResponseType<AuditRecordInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'auditStatus must be 1 (approved) or 2 (rejected)',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    data = await approveResourceApplicationService(adminId, params);
+  } catch (error) {
+    console.error('Approve resource application controller error:', error);
+    const response: ResponseType<{ auditRecord: AuditRecordInfo; resource?: any }> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to approve resource application',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<{ auditRecord: AuditRecordInfo; resource?: any }> = {
+    code: StatusCode.SUCCESS,
+    message: data.auditRecord.auditStatus === 1
+      ? 'Resource application approved successfully'
+      : 'Resource application rejected',
     data: data,
   };
   return res.status(200).json(response);
