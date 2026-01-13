@@ -6,9 +6,11 @@ import { formatDateTimeForMySQL } from '../utils/formatTime';
  * 查询课程
  * 根据条件动态构建查询语句，支持按 courseId、teacherId 查询
  */
-export async function getCourse(conditions: Partial<CourseInfo>): Promise<CourseInfo | null> {
+export async function getCourse(
+  conditions: Partial<CourseInfo>
+): Promise<CourseInfo | null> {
   const { courseId, teacherId } = conditions;
-  
+
   const whereConditions: string[] = [];
   const values: any[] = [];
 
@@ -22,7 +24,7 @@ export async function getCourse(conditions: Partial<CourseInfo>): Promise<Course
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -60,7 +62,7 @@ export async function getCourse(conditions: Partial<CourseInfo>): Promise<Course
       schoolName: row.teacherSchoolName,
     } : null,
   }));
-  
+
   return courses.length > 0 ? courses[0] : null;
 }
 
@@ -145,7 +147,7 @@ export async function getCourseList(
       schoolName: row.teacherSchoolName,
     } : null,
   }));
-  
+
   return { records, total };
 }
 
@@ -153,7 +155,9 @@ export async function getCourseList(
  * 创建课程
  * 插入新课程到数据库，创建后返回完整课程信息
  */
-export async function postCourse(data: Partial<CourseInfo>): Promise<CourseInfo> {
+export async function postCourse(
+  data: Partial<CourseInfo>
+): Promise<CourseInfo> {
   const { courseName, teacherId, description, coverImage, courseStartTime, courseEndTime, status } = data;
 
   if (!courseName || !teacherId || !courseStartTime || !courseEndTime) {
@@ -161,10 +165,10 @@ export async function postCourse(data: Partial<CourseInfo>): Promise<CourseInfo>
   }
 
   const now = new Date();
-  
+
   const formattedStartTime = formatDateTimeForMySQL(courseStartTime);
   const formattedEndTime = formatDateTimeForMySQL(courseEndTime);
-  
+
   let result;
   try {
     [result] = await dbPool.query(
@@ -177,7 +181,7 @@ export async function postCourse(data: Partial<CourseInfo>): Promise<CourseInfo>
   }
 
   const insertResult = result as { insertId: number };
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -199,10 +203,13 @@ export async function postCourse(data: Partial<CourseInfo>): Promise<CourseInfo>
  * 更新课程信息
  * 根据 courseId 更新课程信息，只允许更新特定字段
  */
-export async function putCourse(courseId: number, data: Partial<CourseInfo>): Promise<CourseInfo> {
+export async function putCourse(
+  courseId: number,
+  data: Partial<CourseInfo>
+): Promise<CourseInfo> {
   // 允许更新的字段
   const allowedFields = ['courseName', 'description', 'coverImage', 'courseStartTime', 'courseEndTime', 'status'];
-  
+
   const updateFields: string[] = [];
   const values: any[] = [];
 

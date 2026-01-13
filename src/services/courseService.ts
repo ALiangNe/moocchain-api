@@ -7,7 +7,10 @@ import { ROLE_TEACHER } from '../middlewares/roleMiddleware';
  * 创建课程服务
  * 教师创建新课程
  */
-export async function createCourseService(teacherId: number, data: Partial<CourseInfo>): Promise<CourseInfo> {
+export async function createCourseService(
+  teacherId: number,
+  data: Partial<CourseInfo>
+): Promise<CourseInfo> {
   // 检查教师是否存在
   const teacher = await getUser({ userId: teacherId });
   if (!teacher) {
@@ -23,7 +26,7 @@ export async function createCourseService(teacherId: number, data: Partial<Cours
   if (data.courseStartTime && data.courseEndTime) {
     const startTime = new Date(data.courseStartTime);
     const endTime = new Date(data.courseEndTime);
-    
+
     if (startTime >= endTime) {
       throw new Error('Course end time must be later than start time');
     }
@@ -42,7 +45,11 @@ export async function createCourseService(teacherId: number, data: Partial<Cours
  * 更新课程服务
  * 教师更新自己的课程信息
  */
-export async function updateCourseService(teacherId: number, courseId: number, data: Partial<CourseInfo>): Promise<CourseInfo> {
+export async function updateCourseService(
+  teacherId: number,
+  courseId: number,
+  data: Partial<CourseInfo>
+): Promise<CourseInfo> {
   // 检查课程是否存在
   const course = await getCourse({ courseId });
   if (!course) {
@@ -63,7 +70,7 @@ export async function updateCourseService(teacherId: number, courseId: number, d
   if (finalStartTime && finalEndTime) {
     const startTime = new Date(finalStartTime);
     const endTime = new Date(finalEndTime);
-    
+
     if (startTime >= endTime) {
       throw new Error('Course end time must be later than start time');
     }

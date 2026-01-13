@@ -5,9 +5,11 @@ import { UserInfo } from '../types/userType';
  * 查询用户
  * 根据条件动态构建查询语句，支持按 userId、username、password、email 查询
  */
-export async function getUser(conditions: Partial<UserInfo>): Promise<UserInfo | null> {
+export async function getUser(
+  conditions: Partial<UserInfo>
+): Promise<UserInfo | null> {
   const { userId, username, password, email } = conditions;
-  
+
   const whereConditions: string[] = [];
   const values: any[] = [];
 
@@ -29,7 +31,7 @@ export async function getUser(conditions: Partial<UserInfo>): Promise<UserInfo |
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -49,7 +51,9 @@ export async function getUser(conditions: Partial<UserInfo>): Promise<UserInfo |
  * 创建用户
  * 插入新用户到数据库，默认角色为学生(5)，创建后返回完整用户信息
  */
-export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
+export async function postUser(
+  data: Partial<UserInfo>
+): Promise<UserInfo> {
   const { username, password, email } = data;
 
   if (!username || !password || !email) {
@@ -57,7 +61,7 @@ export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
   }
 
   const now = new Date();
-  
+
   let result;
   try {
     [result] = await dbPool.query(
@@ -70,7 +74,7 @@ export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
   }
 
   const insertResult = result as { insertId: number };
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -90,10 +94,13 @@ export async function postUser(data: Partial<UserInfo>): Promise<UserInfo> {
  * 更新用户信息
  * 根据 userId 更新用户个人信息，只允许更新特定字段
  */
-export async function putUser(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
+export async function putUser(
+  userId: number,
+  data: Partial<UserInfo>
+): Promise<UserInfo> {
   // 允许更新的字段
   const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile'];
-  
+
   const updateFields: string[] = [];
   const values: any[] = [];
 
@@ -152,7 +159,10 @@ export async function putUser(userId: number, data: Partial<UserInfo>): Promise<
  * 更新用户角色
  * 根据 userId 更新用户角色
  */
-export async function updateUserRole(userId: number, role: number): Promise<UserInfo> {
+export async function updateUserRole(
+  userId: number,
+  role: number
+): Promise<UserInfo> {
   const now = new Date();
 
   // 执行更新

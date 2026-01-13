@@ -6,7 +6,9 @@ import { signAccessToken, signRefreshToken, storeRefreshTokenForUser } from './a
  * 登录服务
  * 验证用户名密码，生成双 Token 并存储 refreshToken
  */
-export async function loginService(data: UserInfo): Promise<{ user: UserInfo; accessToken: string; refreshToken: string }> {
+export async function loginService(
+  data: UserInfo
+): Promise<{ user: UserInfo; accessToken: string; refreshToken: string }> {
   let result;
   try {
     result = await getUser({ username: data.username, password: data.password });
@@ -14,17 +16,17 @@ export async function loginService(data: UserInfo): Promise<{ user: UserInfo; ac
     console.error('Login service error:', error);
     throw error;
   }
-  
+
   if (!result || !result.userId || !result.username) {
     throw new Error('Invalid username or password');
   }
-  
+
   const accessToken = signAccessToken({ userId: result.userId, username: result.username, role: result.role });
   const refreshToken = signRefreshToken({ userId: result.userId, username: result.username, role: result.role });
-  
+
   // 存储 refresh token
   storeRefreshTokenForUser(refreshToken, result.userId, result.username);
-  
+
   return {
     user: result,
     accessToken,
@@ -36,7 +38,9 @@ export async function loginService(data: UserInfo): Promise<{ user: UserInfo; ac
  * 注册服务
  * 检查用户名是否已存在，创建新用户账户
  */
-export async function registerService(data: UserInfo): Promise<UserInfo> {
+export async function registerService(
+  data: UserInfo
+): Promise<UserInfo> {
   const { username } = data;
 
   let result;
@@ -65,7 +69,10 @@ export async function registerService(data: UserInfo): Promise<UserInfo> {
  * 更新用户信息服务
  * 更新用户个人信息，不允许修改敏感字段（username, password, role等）
  */
-export async function updateUserService(userId: number, data: Partial<UserInfo>): Promise<UserInfo> {
+export async function updateUserService(
+  userId: number,
+  data: Partial<UserInfo>
+): Promise<UserInfo> {
   // 检查用户是否存在
   let existingUser;
   try {

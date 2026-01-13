@@ -5,9 +5,11 @@ import { ResourceInfo } from '../types/resourceType';
  * 查询资源
  * 根据条件动态构建查询语句，支持按 resourceId、courseId、ownerId 查询
  */
-export async function getResource(conditions: Partial<ResourceInfo>): Promise<ResourceInfo | null> {
+export async function getResource(
+  conditions: Partial<ResourceInfo>
+): Promise<ResourceInfo | null> {
   const { resourceId, courseId, ownerId } = conditions;
-  
+
   const whereConditions: string[] = [];
   const values: any[] = [];
 
@@ -25,7 +27,7 @@ export async function getResource(conditions: Partial<ResourceInfo>): Promise<Re
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -63,7 +65,7 @@ export async function getResource(conditions: Partial<ResourceInfo>): Promise<Re
       schoolName: row.ownerSchoolName,
     } : null,
   }));
-  
+
   return resources.length > 0 ? resources[0] : null;
 }
 
@@ -133,7 +135,7 @@ export async function getResourceList(
   }
 
   const records = rows as ResourceInfo[];
-  
+
   return { records, total };
 }
 
@@ -142,7 +144,9 @@ export async function getResourceList(
  * 插入新资源到数据库，创建后返回完整资源信息
  * 注意：暂时不处理 ipfsHash 和 resourceNftId（区块链相关功能后续实现）
  */
-export async function postResource(data: Partial<ResourceInfo>): Promise<ResourceInfo> {
+export async function postResource(
+  data: Partial<ResourceInfo>
+): Promise<ResourceInfo> {
   const { ownerId, courseId, title, description, ipfsHash, resourceType, price, accessScope, status } = data;
 
   if (!ownerId || !courseId || !title) {
@@ -154,7 +158,7 @@ export async function postResource(data: Partial<ResourceInfo>): Promise<Resourc
   const filePath = ipfsHash || 'temp_' + Date.now();
 
   const now = new Date();
-  
+
   let result;
   try {
     [result] = await dbPool.query(
@@ -167,7 +171,7 @@ export async function postResource(data: Partial<ResourceInfo>): Promise<Resourc
   }
 
   const insertResult = result as { insertId: number };
-  
+
   let rows;
   try {
     [rows] = await dbPool.query(
@@ -187,10 +191,13 @@ export async function postResource(data: Partial<ResourceInfo>): Promise<Resourc
  * 更新资源信息
  * 根据 resourceId 更新资源信息，只允许更新特定字段
  */
-export async function putResource(resourceId: number, data: Partial<ResourceInfo>): Promise<ResourceInfo> {
+export async function putResource(
+  resourceId: number,
+  data: Partial<ResourceInfo>
+): Promise<ResourceInfo> {
   // 允许更新的字段
   const allowedFields = ['title', 'description', 'resourceType', 'price', 'accessScope', 'status'];
-  
+
   const updateFields: string[] = [];
   const values: any[] = [];
 

@@ -5,7 +5,7 @@ import { AuditRecordInfo } from '../types/auditRecordType';
  * 创建教师申请审核记录
  * 检查是否已有待审核的申请，如果没有则创建新申请
  */
-export async function createTeacherApplicationModel(
+export async function createTeacherApplication(
   studentId: number,
   auditComment?: string
 ): Promise<AuditRecordInfo> {
@@ -60,7 +60,7 @@ export async function createTeacherApplicationModel(
  * 创建资源审核记录
  * 资源创建后自动创建审核记录（待审核状态）
  */
-export async function createResourceAuditModel(
+export async function createResourceAudit(
   resourceId: number,
   ownerId: number
 ): Promise<AuditRecordInfo> {
@@ -99,7 +99,7 @@ export async function createResourceAuditModel(
  * 审批教师申请
  * 更新审核记录状态，如果通过则返回更新后的记录和用户信息
  */
-export async function approveTeacherApplicationModel(
+export async function approveTeacherApplication(
   auditId: number,
   adminId: number,
   auditStatus: number,
@@ -196,7 +196,7 @@ export async function approveTeacherApplicationModel(
  * 审批资源申请
  * 更新审核记录状态，如果通过则返回更新后的记录和资源ID
  */
-export async function approveResourceApplicationModel(
+export async function approveResourceApplication(
   auditId: number,
   adminId: number,
   auditStatus: number,
@@ -293,7 +293,7 @@ export async function approveResourceApplicationModel(
  * 获取审核记录列表
  * 支持分页和条件筛选
  */
-export async function getAuditRecordListModel(
+export async function getAuditRecordList(
   params: Partial<AuditRecordInfo>,
   page: number = 1,
   pageSize: number = 10

@@ -1,5 +1,5 @@
 import { AuditRecordInfo } from '../types/auditRecordType';
-import { createTeacherApplicationModel, approveTeacherApplicationModel, approveResourceApplicationModel, getAuditRecordListModel } from '../models/auditRecordModel';
+import { createTeacherApplication, approveTeacherApplication, approveResourceApplication, getAuditRecordList } from '../models/auditRecordModel';
 import { getUser, updateUserRole } from '../models/userModel';
 import { putResource } from '../models/resourceModel';
 import { ROLE_STUDENT, ROLE_TEACHER, ROLE_ADMIN } from '../middlewares/roleMiddleware';
@@ -24,7 +24,7 @@ export async function createTeacherApplicationService(
   }
 
   // 创建审核记录（model层已包含检查逻辑）
-  const data = await createTeacherApplicationModel(studentId, params.auditComment);
+  const data = await createTeacherApplication(studentId, params.auditComment);
   return data;
 }
 
@@ -48,7 +48,7 @@ export async function approveTeacherApplicationService(
   }
 
   // 审批审核记录（model层已包含验证逻辑）
-  const { auditRecord, targetUserId } = await approveTeacherApplicationModel(
+  const { auditRecord, targetUserId } = await approveTeacherApplication(
     params.auditId,
     adminId,
     params.auditStatus,
@@ -93,7 +93,7 @@ export async function approveResourceApplicationService(
   }
 
   // 审批审核记录（model层已包含验证逻辑）
-  const { auditRecord, resourceId } = await approveResourceApplicationModel(
+  const { auditRecord, resourceId } = await approveResourceApplication(
     params.auditId,
     adminId,
     params.auditStatus,
@@ -124,6 +124,6 @@ export async function getAuditRecordListService(
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: AuditRecordInfo[]; total: number }> {
-  return await getAuditRecordListModel(conditions, page, pageSize);
+  return await getAuditRecordList(conditions, page, pageSize);
 }
 
