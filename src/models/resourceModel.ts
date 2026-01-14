@@ -196,7 +196,7 @@ export async function putResource(
   data: Partial<ResourceInfo>
 ): Promise<ResourceInfo> {
   // 允许更新的字段
-  const allowedFields = ['title', 'description', 'resourceType', 'price', 'accessScope', 'status'];
+  const allowedFields = ['resourceNftId', 'title', 'description', 'resourceType', 'price', 'accessScope', 'status'];
 
   const updateFields: string[] = [];
   const values: any[] = [];

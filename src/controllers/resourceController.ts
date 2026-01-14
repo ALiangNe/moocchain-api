@@ -4,6 +4,9 @@ import { ResourceInfo } from '../types/resourceType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { uploadFileToIPFS } from '../utils/pinataIpfs';
+import path from 'path';
+import fs from 'fs';
 
 /**
  * 创建资源
@@ -11,7 +14,7 @@ import { AuthRequest } from '../middlewares/authMiddleware';
  */
 export async function createResourceController(req: AuthRequest, res: Response) {
   const teacherId = req.user!.userId;
-  
+
   // 验证文件是否上传
   if (!req.file) {
     const response: ResponseType<ResourceInfo> = {
@@ -53,49 +56,66 @@ export async function createResourceController(req: AuthRequest, res: Response) 
 
   // 根据文件类型自动设置 resourceType
   // 0:其他，1:文档，2:音频，3:视频
-  let resourceType = 0;
   const mimeType = req.file.mimetype;
-  
-  // 文档类型
-  if (
-    mimeType === 'application/pdf' ||
-    mimeType === 'application/msword' ||
-    mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    mimeType === 'application/vnd.ms-excel' ||
-    mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  ) {
+  let resourceType = 0;
+
+  if (mimeType === 'application/pdf' || mimeType === 'application/msword' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mimeType === 'application/vnd.ms-excel' || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     resourceType = 1;
-  }
-  // 音频类型
-  else if (
-    mimeType.startsWith('audio/')
-  ) {
-    resourceType = 2;
-  }
-  // 视频类型
-  else if (
-    mimeType.startsWith('video/')
-  ) {
-    resourceType = 3;
+    // 文档类型
   }
 
-  // 文件路径（暂时存储在 ipfsHash 字段中，后续对接 IPFS 时需要修改）
-  const filePath = `/uploads/resources/${req.file.filename}`;
+  if (mimeType.startsWith('audio/')) {
+    resourceType = 2;
+    // 音频类型
+  }
+
+  if (mimeType.startsWith('video/')) {
+    resourceType = 3;
+    // 视频类型
+  }
+
+  const filePath = path.join(__dirname, '../../uploads/resources', req.file.filename);
+
+  let ipfsHash: string;
+  try {
+    ipfsHash = await uploadFileToIPFS(filePath, req.file.originalname);
+  } catch (error) {
+    console.error('Upload to IPFS error:', error);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (unlinkError) {
+        console.error('Failed to delete temporary file:', unlinkError);
+      }
+    }
+    const response: ResponseType<ResourceInfo> = {
+      code: StatusCode.INTERNAL_SERVER_ERROR,
+      message: error instanceof Error ? error.message : 'Failed to upload file to IPFS',
+    };
+    return res.status(500).json(response);
+  }
+
+  if (fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (unlinkError) {
+      console.error('Failed to delete temporary file after IPFS upload:', unlinkError);
+    }
+  }
+
+  const resourceParams: Partial<ResourceInfo> = {
+    courseId,
+    title: params.title,
+    description: params.description,
+    resourceType,
+    price: params.price !== undefined ? parseFloat(params.price as any) : undefined,
+    accessScope: params.accessScope !== undefined ? parseInt(params.accessScope as any) : undefined,
+    status: params.status !== undefined ? parseInt(params.status as any) : undefined,
+    ipfsHash: ipfsHash,
+  };
 
   let data;
   try {
-    // 构建资源参数
-    const resourceParams: Partial<ResourceInfo> = {
-      courseId,
-      title: params.title,
-      description: params.description,
-      resourceType,
-      price: params.price !== undefined ? parseFloat(params.price as any) : undefined,
-      accessScope: params.accessScope !== undefined ? parseInt(params.accessScope as any) : undefined,
-      status: params.status !== undefined ? parseInt(params.status as any) : undefined,
-      ipfsHash: filePath, // 暂时使用文件路径，后续对接 IPFS
-    };
-
     data = await createResourceService(teacherId, resourceParams);
   } catch (error) {
     console.error('Create resource controller error:', error);
