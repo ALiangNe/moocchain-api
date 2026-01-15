@@ -1,6 +1,7 @@
 import { CourseInfo } from '../types/courseType';
 import { getCourse, postCourse, putCourse, getCourseList } from '../models/courseModel';
 import { getUser } from '../models/userModel';
+import { createCourseAudit } from '../models/auditRecordModel';
 import { ROLE_TEACHER } from '../middlewares/roleMiddleware';
 
 /**
@@ -32,13 +33,21 @@ export async function createCourseService(
     }
   }
 
-  // 创建课程
+  // 创建课程（状态默认为0-待审核）
   const params: Partial<CourseInfo> = {
     ...data,
     teacherId,
+    status: data.status !== undefined ? data.status : 0, // 默认待审核
   };
 
-  return await postCourse(params);
+  const course = await postCourse(params);
+
+  // 创建课程后，自动创建审核记录（待审核状态）
+  if (course.courseId) {
+    await createCourseAudit(course.courseId, teacherId);
+  }
+
+  return course;
 }
 
 /**

@@ -173,7 +173,7 @@ export async function postCourse(
   try {
     [result] = await dbPool.query(
       'INSERT INTO course (courseName, teacherId, description, coverImage, courseStartTime, courseEndTime, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [courseName, teacherId, description || null, coverImage || null, formattedStartTime, formattedEndTime, status !== undefined ? status : 1, now, now]
+      [courseName, teacherId, description || null, coverImage || null, formattedStartTime, formattedEndTime, status !== undefined ? status : 0, now, now]
     );
   } catch (error) {
     console.error('Create course failed:', error);

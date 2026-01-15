@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { registerController, loginController, updateUserController } from '../controllers/userController';
 import { refreshTokenController, logoutController, getCurrentUserController } from '../controllers/authController';
 import { uploadAvatarController, uploadCertificateController } from '../controllers/uploadController';
-import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, getAuditRecordListController } from '../controllers/auditRecordController';
+import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, approveCourseApplicationController, getAuditRecordListController, reapplyCourseAuditController, reapplyResourceAuditController } from '../controllers/auditRecordController';
 import { createCourseController, updateCourseController, getCourseListController, getCourseController } from '../controllers/courseController';
 import { createResourceController, updateResourceController, getResourceListController, getResourceController } from '../controllers/resourceController';
 import { authMiddleware } from '../middlewares/authMiddleware';
@@ -24,10 +24,13 @@ router.post('/uploadAvatar', authMiddleware, uploadAvatar.single('avatar'), uplo
 
 // AuditRecord
 router.post('/createTeacherApplication', authMiddleware, checkRole(5), createTeacherApplicationController);
+router.post('/uploadCertificate', authMiddleware, uploadCertificate.single('certificate'), uploadCertificateController);
 router.post('/approveTeacherApplication', authMiddleware, checkRole(0), approveTeacherApplicationController);
 router.post('/approveResourceApplication', authMiddleware, checkRole(0), approveResourceApplicationController);
+router.post('/approveCourseApplication', authMiddleware, checkRole(0), approveCourseApplicationController);
+router.post('/reapplyCourseAudit', authMiddleware, checkRole(0, 4), reapplyCourseAuditController);
+router.post('/reapplyResourceAudit', authMiddleware, checkRole(0, 4), reapplyResourceAuditController);
 router.get('/getAuditRecordList', authMiddleware, getAuditRecordListController);
-router.post('/uploadCertificate', authMiddleware, uploadCertificate.single('certificate'), uploadCertificateController);
 
 // Course
 router.post('/createCourse', authMiddleware, checkRole(0, 4), uploadCourseCover.single('coverImage'), createCourseController);
