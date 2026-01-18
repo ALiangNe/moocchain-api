@@ -9,7 +9,7 @@ export interface CourseInfo {
   coverImage?: string;        // 课程封面图片
   courseStartTime?: Date;     // 开课时间
   courseEndTime?: Date;       // 结课时间
-  status?: number;            // 课程状态（0:未发布，1:已发布，2:已结束）
+  status?: number;            // 课程状态（0:待审核，1:已审核，2:已发布，3:已下架）
   createdAt?: Date;           // 创建时间
   updatedAt?: Date;           // 更新时间
   // 完整的教师信息对象

@@ -5,6 +5,7 @@ import { uploadAvatarController, uploadCertificateController } from '../controll
 import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, approveCourseApplicationController, getAuditRecordListController, reapplyCourseAuditController, reapplyResourceAuditController } from '../controllers/auditRecordController';
 import { createCourseController, updateCourseController, getCourseListController, getCourseController } from '../controllers/courseController';
 import { createResourceController, updateResourceController, getResourceListController, getResourceController } from '../controllers/resourceController';
+import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController } from '../controllers/learningRecordController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
@@ -43,6 +44,14 @@ router.post('/createResource', authMiddleware, checkRole(0, 4), uploadResource.s
 router.put('/updateResource/:resourceId', authMiddleware, checkRole(0, 4), updateResourceController);
 router.get('/getResourceList', authMiddleware, getResourceListController);
 router.get('/getResource/:resourceId', authMiddleware, getResourceController);
+
+// LearningRecord
+router.post('/completeLearningRecord', authMiddleware, completeLearningRecordController);
+router.post('/reportLearningTime', authMiddleware, reportLearningTimeController);
+router.put('/updateLearningProgress/:resourceId', authMiddleware, updateLearningProgressController);
+router.post('/submitReview', authMiddleware, submitReviewController);
+router.get('/getLearningRecordList', authMiddleware, getLearningRecordListController);
+router.get('/getLearningRecord/:recordId', authMiddleware, getLearningRecordController);
 
 export default router;
 
