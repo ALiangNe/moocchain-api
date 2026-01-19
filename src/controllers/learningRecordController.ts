@@ -257,15 +257,11 @@ export async function getLearningRecordListController(req: AuthRequest, res: Res
 
     const params: Partial<LearningRecordInfo> = {};
 
-    // 如果未指定 studentId，默认查询当前用户的学习记录
     if (studentId) {
         const studentIdNum = parseInt(studentId as string);
         if (!isNaN(studentIdNum)) {
             params.studentId = studentIdNum;
         }
-    } else {
-        // 默认查询当前用户的学习记录
-        params.studentId = req.user!.userId;
     }
 
     if (resourceId) {

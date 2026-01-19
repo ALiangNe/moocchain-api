@@ -2,7 +2,6 @@ import { LearningRecordInfo } from '../types/learningRecordType';
 import { getLearningRecord, postLearningRecord, putLearningRecord, getLearningRecordList } from '../models/learningRecordModel';
 import { getResource } from '../models/resourceModel';
 import { getUser } from '../models/userModel';
-import { ROLE_STUDENT } from '../middlewares/roleMiddleware';
 
 /**
  * 完成学习服务（文档/图片类型）
@@ -13,15 +12,10 @@ export async function completeLearningRecordService(
   studentId: number,
   resourceId: number
 ): Promise<LearningRecordInfo> {
-  // 检查学生是否存在
-  const student = await getUser({ userId: studentId });
-  if (!student) {
-    throw new Error('Student not found');
-  }
-
-  // 检查学生角色
-  if (student.role !== ROLE_STUDENT) {
-    throw new Error('Only students can complete learning records');
+  // 检查用户是否存在
+  const user = await getUser({ userId: studentId });
+  if (!user) {
+    throw new Error('User not found');
   }
 
   // 检查资源是否存在
@@ -85,15 +79,10 @@ export async function reportLearningTimeService(
   resourceId: number,
   timeIncrement: number
 ): Promise<LearningRecordInfo> {
-  // 检查学生是否存在
-  const student = await getUser({ userId: studentId });
-  if (!student) {
-    throw new Error('Student not found');
-  }
-
-  // 检查学生角色
-  if (student.role !== ROLE_STUDENT) {
-    throw new Error('Only students can report learning time');
+  // 检查用户是否存在
+  const user = await getUser({ userId: studentId });
+  if (!user) {
+    throw new Error('User not found');
   }
 
   // 检查资源是否存在
@@ -175,15 +164,10 @@ export async function updateLearningProgressService(
   resourceId: number,
   progress: number
 ): Promise<LearningRecordInfo> {
-  // 检查学生是否存在
-  const student = await getUser({ userId: studentId });
-  if (!student) {
-    throw new Error('Student not found');
-  }
-
-  // 检查学生角色
-  if (student.role !== ROLE_STUDENT) {
-    throw new Error('Only students can update learning progress');
+  // 检查用户是否存在
+  const user = await getUser({ userId: studentId });
+  if (!user) {
+    throw new Error('User not found');
   }
 
   // 验证进度范围
@@ -226,15 +210,10 @@ export async function submitReviewService(
   review: string,
   rating: number
 ): Promise<LearningRecordInfo> {
-  // 检查学生是否存在
-  const student = await getUser({ userId: studentId });
-  if (!student) {
-    throw new Error('Student not found');
-  }
-
-  // 检查学生角色
-  if (student.role !== ROLE_STUDENT) {
-    throw new Error('Only students can submit reviews');
+  // 检查用户是否存在
+  const user = await getUser({ userId: studentId });
+  if (!user) {
+    throw new Error('User not found');
   }
 
   // 验证评分范围
