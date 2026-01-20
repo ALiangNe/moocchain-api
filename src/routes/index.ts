@@ -5,7 +5,7 @@ import { uploadAvatarController, uploadCertificateController } from '../controll
 import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, approveCourseApplicationController, getAuditRecordListController, reapplyCourseAuditController, reapplyResourceAuditController } from '../controllers/auditRecordController';
 import { createCourseController, updateCourseController, getCourseListController, getCourseController } from '../controllers/courseController';
 import { createResourceController, updateResourceController, getResourceListController, getResourceController } from '../controllers/resourceController';
-import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController } from '../controllers/learningRecordController';
+import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController } from '../controllers/learningRecordController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
@@ -52,6 +52,7 @@ router.put('/updateLearningProgress/:resourceId', authMiddleware, updateLearning
 router.post('/submitReview', authMiddleware, submitReviewController);
 router.get('/getLearningRecordList', authMiddleware, getLearningRecordListController);
 router.get('/getLearningRecord/:recordId', authMiddleware, getLearningRecordController);
+router.get('/getLearningHistoryList', authMiddleware, getLearningHistoryListController);
 
 export default router;
 

@@ -1,6 +1,7 @@
 import { Response } from 'express';
-import { completeLearningRecordService, reportLearningTimeService, updateLearningProgressService, submitReviewService, getLearningRecordListService, getLearningRecordService, } from '../services/learningRecordService';
+import { completeLearningRecordService, reportLearningTimeService, updateLearningProgressService, submitReviewService, getLearningRecordListService, getLearningRecordService, getLearningHistoryListService, } from '../services/learningRecordService';
 import { LearningRecordInfo } from '../types/learningRecordType';
+import { ResourceInfo } from '../types/resourceType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -323,6 +324,35 @@ export async function getLearningRecordController(req: AuthRequest, res: Respons
     code: StatusCode.SUCCESS,
     message: 'Get learning record successfully',
     data: data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 获取学习历史课程列表
+ * 返回当前登录用户已经学习过的课程（根据学习记录去重）
+ */
+export async function getLearningHistoryListController(req: AuthRequest, res: Response) {
+  const studentId = req.user!.userId;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+  let data;
+  try {
+    data = await getLearningHistoryListService(studentId, page, pageSize);
+  } catch (error) {
+    console.error('Get learning history list controller error:', error);
+    const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
+      code: StatusCode.INTERNAL_SERVER_ERROR,
+      message: 'Failed to get learning history list',
+    };
+    return res.status(500).json(response);
+  }
+
+  const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
+    code: StatusCode.SUCCESS,
+    message: 'Get learning history list successfully',
+    data,
   };
   return res.status(200).json(response);
 }

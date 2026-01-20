@@ -1,5 +1,6 @@
 import { dbPool } from '../config/database';
 import { LearningRecordInfo } from '../types/learningRecordType';
+import { ResourceInfo } from '../types/resourceType';
 
 /**
  * 查询学习记录
@@ -285,4 +286,95 @@ export async function putLearningRecord(
   }
 
   return records[0];
+}
+
+/**
+ * 获取学习历史资源列表
+ * 根据学习记录关联资源和课程，查询某个学生学过的资源（去重），附带课程与教师信息
+ */
+export async function getLearningHistoryList(
+  studentId: number,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<{ records: ResourceInfo[]; total: number }> {
+  if (!studentId) {
+    throw new Error('studentId is required');
+  }
+
+  const offset = (page - 1) * pageSize;
+
+  // 查询去重后的资源总数
+  let countRows;
+  try {
+    [countRows] = await dbPool.query(
+      `SELECT COUNT(DISTINCT r.resourceId) AS total
+       FROM learningRecord lr
+       JOIN resource r ON lr.resourceId = r.resourceId
+       WHERE lr.studentId = ?`,
+      [studentId]
+    );
+  } catch (error) {
+    console.error('Get learned course count failed:', error);
+    throw error;
+  }
+
+  const total = (countRows as { total: number }[])[0]?.total || 0;
+
+  if (total === 0) {
+    return { records: [], total: 0 };
+  }
+
+  // 查询资源列表（按最近学习时间倒序）
+  let rows;
+  try {
+    [rows] = await dbPool.query(
+      `SELECT 
+         r.resourceId, r.title, r.description, r.ipfsHash, r.resourceType, r.price, r.accessScope, r.status AS resourceStatus,
+         c.courseId, c.courseName, c.description AS courseDescription, c.coverImage, c.courseStartTime, c.courseEndTime, c.status AS courseStatus,
+         u.userId AS teacherUserId, u.username AS teacherUsername, u.realName AS teacherRealName, u.schoolName AS teacherSchoolName, u.avatar AS teacherAvatar,
+         MAX(lr.progress) AS learningProgress
+       FROM learningRecord lr
+       JOIN resource r ON lr.resourceId = r.resourceId
+       JOIN course c ON r.courseId = c.courseId
+       LEFT JOIN user u ON c.teacherId = u.userId
+       WHERE lr.studentId = ?
+       GROUP BY r.resourceId
+       ORDER BY MAX(lr.updatedAt) DESC
+       LIMIT ? OFFSET ?`,
+      [studentId, pageSize, offset]
+    );
+  } catch (error) {
+    console.error('Get learned course list failed:', error);
+    throw error;
+  }
+
+  const records = (rows as any[]).map((row: any): ResourceInfo & { learningProgress?: number } => ({
+    resourceId: row.resourceId,
+    title: row.title,
+    description: row.description,
+    ipfsHash: row.ipfsHash,
+    resourceType: row.resourceType,
+    price: row.price,
+    accessScope: row.accessScope,
+    status: row.resourceStatus,
+    learningProgress: row.learningProgress !== null && row.learningProgress !== undefined ? Number(row.learningProgress) : undefined,
+    course: {
+      courseId: row.courseId,
+      courseName: row.courseName,
+      description: row.courseDescription,
+      coverImage: row.coverImage,
+      courseStartTime: row.courseStartTime,
+      courseEndTime: row.courseEndTime,
+      status: row.courseStatus,
+      teacher: row.teacherUserId ? {
+        userId: row.teacherUserId,
+        username: row.teacherUsername,
+        realName: row.teacherRealName,
+        avatar: row.teacherAvatar,
+        schoolName: row.teacherSchoolName,
+      } : null,
+    },
+  }));
+
+  return { records, total };
 }

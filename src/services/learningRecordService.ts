@@ -1,5 +1,6 @@
 import { LearningRecordInfo } from '../types/learningRecordType';
-import { getLearningRecord, postLearningRecord, putLearningRecord, getLearningRecordList } from '../models/learningRecordModel';
+import { getLearningRecord, postLearningRecord, putLearningRecord, getLearningRecordList, getLearningHistoryList } from '../models/learningRecordModel';
+import { ResourceInfo } from '../types/resourceType';
 import { getResource } from '../models/resourceModel';
 import { getUser } from '../models/userModel';
 
@@ -252,6 +253,18 @@ export async function getLearningRecordListService(
   pageSize: number = 10
 ): Promise<{ records: LearningRecordInfo[]; total: number }> {
   return await getLearningRecordList(params, page, pageSize);
+}
+
+/**
+ * 获取学习历史课程列表服务
+ * 返回当前学生学过的课程（去重）
+ */
+export async function getLearningHistoryListService(
+  studentId: number,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<{ records: ResourceInfo[]; total: number }> {
+  return await getLearningHistoryList(studentId, page, pageSize);
 }
 
 /**
