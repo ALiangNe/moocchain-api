@@ -6,9 +6,11 @@ import { createTeacherApplicationController, approveTeacherApplicationController
 import { createCourseController, updateCourseController, getCourseListController, getCourseController } from '../controllers/courseController';
 import { createResourceController, updateResourceController, getResourceListController, getResourceController } from '../controllers/resourceController';
 import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController } from '../controllers/learningRecordController';
+import { createCertificateTemplateController, updateCertificateTemplateController, getCertificateTemplateListController, getCertificateTemplateController } from '../controllers/certificateTemplateController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
+import { validateCertificateTemplateMiddleware } from '../middlewares/certificateTemplateValidationMiddleware';
 
 const router = Router();
 
@@ -53,6 +55,12 @@ router.post('/submitReview', authMiddleware, submitReviewController);
 router.get('/getLearningRecordList', authMiddleware, getLearningRecordListController);
 router.get('/getLearningRecord/:recordId', authMiddleware, getLearningRecordController);
 router.get('/getLearningHistoryList', authMiddleware, getLearningHistoryListController);
+
+// CertificateTemplate
+router.post('/createCertificateTemplate', authMiddleware, checkRole(0), validateCertificateTemplateMiddleware, createCertificateTemplateController);
+router.put('/updateCertificateTemplate/:templateId', authMiddleware, checkRole(0), validateCertificateTemplateMiddleware, updateCertificateTemplateController);
+router.get('/getCertificateTemplateList', authMiddleware, getCertificateTemplateListController);
+router.get('/getCertificateTemplate/:templateId', authMiddleware, getCertificateTemplateController);
 
 export default router;
 
