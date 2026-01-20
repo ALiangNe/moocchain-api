@@ -7,6 +7,7 @@ import { createCourseController, updateCourseController, getCourseListController
 import { createResourceController, updateResourceController, getResourceListController, getResourceController } from '../controllers/resourceController';
 import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController } from '../controllers/learningRecordController';
 import { createCertificateTemplateController, updateCertificateTemplateController, getCertificateTemplateListController, getCertificateTemplateController } from '../controllers/certificateTemplateController';
+import { createResourceCertificateConfigController, updateResourceCertificateConfigController, getResourceCertificateConfigListController, getResourceCertificateConfigController } from '../controllers/resourceCertificateConfigController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
@@ -61,6 +62,12 @@ router.post('/createCertificateTemplate', authMiddleware, checkRole(0), validate
 router.put('/updateCertificateTemplate/:templateId', authMiddleware, checkRole(0), validateCertificateTemplateMiddleware, updateCertificateTemplateController);
 router.get('/getCertificateTemplateList', authMiddleware, getCertificateTemplateListController);
 router.get('/getCertificateTemplate/:templateId', authMiddleware, getCertificateTemplateController);
+
+// ResourceCertificateConfig
+router.post('/createResourceCertificateConfig', authMiddleware, checkRole(4), createResourceCertificateConfigController);
+router.put('/updateResourceCertificateConfig/:configId', authMiddleware, checkRole(4), updateResourceCertificateConfigController);
+router.get('/getResourceCertificateConfigList', authMiddleware, checkRole(0, 4), getResourceCertificateConfigListController);
+router.get('/getResourceCertificateConfig/:configId', authMiddleware, checkRole(0, 4), getResourceCertificateConfigController);
 
 export default router;
 
