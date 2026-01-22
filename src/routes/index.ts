@@ -9,6 +9,7 @@ import { completeLearningRecordController, reportLearningTimeController, updateL
 import { createCertificateTemplateController, updateCertificateTemplateController, getCertificateTemplateListController, getCertificateTemplateController } from '../controllers/certificateTemplateController';
 import { createResourceCertificateConfigController, updateResourceCertificateConfigController, getResourceCertificateConfigListController, getResourceCertificateConfigController } from '../controllers/resourceCertificateConfigController';
 import { createCertificateController, getCertificateListController, getCertificateController, updateCertificateNftController } from '../controllers/certificateController';
+import { createTokenRuleController, updateTokenRuleController, getTokenRuleListController, getTokenRuleController } from '../controllers/tokenRuleController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
@@ -75,6 +76,12 @@ router.post('/createCertificate', authMiddleware, checkRole(5), createCertificat
 router.get('/getCertificateList', authMiddleware, getCertificateListController);
 router.get('/getCertificate/:certificateId', authMiddleware, getCertificateController);
 router.put('/updateCertificateNft/:certificateId', authMiddleware, checkRole(5), updateCertificateNftController);
+
+// TokenRule
+router.post('/createTokenRule', authMiddleware, checkRole(0), createTokenRuleController);
+router.put('/updateTokenRule/:ruleId', authMiddleware, checkRole(0), updateTokenRuleController);
+router.get('/getTokenRuleList', authMiddleware, getTokenRuleListController);
+router.get('/getTokenRule/:ruleId', authMiddleware, getTokenRuleController);
 
 export default router;
 
