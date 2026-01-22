@@ -22,7 +22,9 @@
     "form-data": "^4.0.5",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "mysql2": "^3.16.0"
+    "mysql2": "^3.16.0",
+    "sharp": "^0.34.5",
+    "skia-canvas": "^3.0.8"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

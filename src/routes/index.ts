@@ -8,6 +8,7 @@ import { createResourceController, updateResourceController, getResourceListCont
 import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController } from '../controllers/learningRecordController';
 import { createCertificateTemplateController, updateCertificateTemplateController, getCertificateTemplateListController, getCertificateTemplateController } from '../controllers/certificateTemplateController';
 import { createResourceCertificateConfigController, updateResourceCertificateConfigController, getResourceCertificateConfigListController, getResourceCertificateConfigController } from '../controllers/resourceCertificateConfigController';
+import { createCertificateController, getCertificateListController, getCertificateController, updateCertificateNftController } from '../controllers/certificateController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { uploadAvatar, uploadCertificate, uploadResource, uploadCourseCover } from '../middlewares/uploadMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
@@ -68,6 +69,12 @@ router.post('/createResourceCertificateConfig', authMiddleware, checkRole(4), cr
 router.put('/updateResourceCertificateConfig/:configId', authMiddleware, checkRole(4), updateResourceCertificateConfigController);
 router.get('/getResourceCertificateConfigList', authMiddleware, checkRole(0, 4), getResourceCertificateConfigListController);
 router.get('/getResourceCertificateConfig/:configId', authMiddleware, checkRole(0, 4), getResourceCertificateConfigController);
+
+// Certificate
+router.post('/createCertificate', authMiddleware, checkRole(5), createCertificateController);
+router.get('/getCertificateList', authMiddleware, getCertificateListController);
+router.get('/getCertificate/:certificateId', authMiddleware, getCertificateController);
+router.put('/updateCertificateNft/:certificateId', authMiddleware, checkRole(5), updateCertificateNftController);
 
 export default router;
 

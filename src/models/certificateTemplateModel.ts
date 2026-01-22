@@ -34,9 +34,10 @@ export async function postCertificateTemplate(
     let rows;
     try {
         [rows] = await dbPool.query(
-            `SELECT ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt
-       FROM certificateTemplate ct
-       WHERE ct.templateId = ?`,
+            `SELECT 
+              ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt
+            FROM certificateTemplate ct
+            WHERE ct.templateId = ?`,
             [insertResult.insertId]
         );
     } catch (error) {
@@ -97,9 +98,10 @@ export async function putCertificateTemplate(
     let rows;
     try {
         [rows] = await dbPool.query(
-            `SELECT ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt
-       FROM certificateTemplate ct
-       WHERE ct.templateId = ?`,
+            `SELECT 
+              ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt
+            FROM certificateTemplate ct
+            WHERE ct.templateId = ?`,
             [templateId]
         );
     } catch (error) {
@@ -162,13 +164,13 @@ export async function getCertificateTemplateList(
     try {
         [rows] = await dbPool.query(
             `SELECT 
-           ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt,
-           u.userId AS creatorUserId, u.username AS creatorUsername, u.realName AS creatorRealName, u.email AS creatorEmail, u.avatar AS creatorAvatar
-         FROM certificateTemplate ct
-         LEFT JOIN user u ON ct.createdBy = u.userId
-         ${whereClause}
-         ORDER BY ct.createdAt DESC 
-         LIMIT ? OFFSET ?`,
+              ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt,
+              u.userId AS creatorUserId, u.username AS creatorUsername, u.realName AS creatorRealName, u.email AS creatorEmail, u.avatar AS creatorAvatar
+            FROM certificateTemplate ct
+            LEFT JOIN user u ON ct.createdBy = u.userId
+            ${whereClause}
+            ORDER BY ct.createdAt DESC 
+            LIMIT ? OFFSET ?`,
             [...values, pageSize, offset]
         );
     } catch (error) {
@@ -204,7 +206,7 @@ export async function getCertificateTemplateList(
 export async function getCertificateTemplate(
     conditions: Partial<CertificateTemplateInfo>
 ): Promise<CertificateTemplateInfo | null> {
-    const { templateId, createdBy, isActive } = conditions;
+    const { templateId, createdBy, isActive, templateName } = conditions;
 
     const whereConditions: string[] = [];
     const values: any[] = [];
@@ -212,6 +214,10 @@ export async function getCertificateTemplate(
     if (templateId) {
         whereConditions.push('ct.templateId = ?');
         values.push(templateId);
+    }
+    if (templateName) {
+        whereConditions.push('ct.templateName = ?');
+        values.push(templateName);
     }
     if (createdBy) {
         whereConditions.push('ct.createdBy = ?');
@@ -228,11 +234,11 @@ export async function getCertificateTemplate(
     try {
         [rows] = await dbPool.query(
             `SELECT 
-           ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt,
-           u.userId AS creatorUserId, u.username AS creatorUsername, u.realName AS creatorRealName, u.email AS creatorEmail, u.avatar AS creatorAvatar
-         FROM certificateTemplate ct 
-         LEFT JOIN user u ON ct.createdBy = u.userId
-         ${whereClause}`,
+              ct.templateId, ct.templateName, ct.templateContent, ct.createdBy, ct.isActive, ct.createdAt, ct.updatedAt,
+              u.userId AS creatorUserId, u.username AS creatorUsername, u.realName AS creatorRealName, u.email AS creatorEmail, u.avatar AS creatorAvatar
+            FROM certificateTemplate ct 
+            LEFT JOIN user u ON ct.createdBy = u.userId
+            ${whereClause}`,
             values
         );
     } catch (error) {

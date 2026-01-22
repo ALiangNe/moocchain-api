@@ -86,7 +86,7 @@ export async function createResourceCertificateConfigController(req: AuthRequest
       };
       return res.status(400).json(response);
     }
-    const allowedKeys = ['courseName', 'issuerName'];
+    const allowedKeys = ['courseName', 'issuerName', 'teacherSchool'];
     const invalidKey = Object.keys(parsed).find(k => !allowedKeys.includes(k));
     if (invalidKey) {
       const response: ResponseType<ResourceCertificateConfigInfo> = {
@@ -199,7 +199,7 @@ export async function updateResourceCertificateConfigController(req: AuthRequest
       };
       return res.status(400).json(response);
     }
-    const allowedKeys = ['courseName', 'issuerName'];
+    const allowedKeys = ['courseName', 'issuerName', 'teacherSchool'];
     const invalidKey = Object.keys(parsed).find(k => !allowedKeys.includes(k));
     if (invalidKey) {
       const response: ResponseType<ResourceCertificateConfigInfo> = {
