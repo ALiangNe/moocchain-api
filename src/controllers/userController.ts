@@ -104,7 +104,7 @@ export async function updateUserController(req: AuthRequest, res: Response) {
   const data = req.body as Partial<UserInfo>;
 
   // 检查是否至少有一个可更新的字段
-  const updatableFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile'];
+  const updatableFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile', 'walletAddress', 'tokenBalance'];
   const hasValidField = updatableFields.some(field => data[field as keyof UserInfo] !== undefined);
 
   if (!hasValidField) {

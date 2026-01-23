@@ -99,7 +99,7 @@ export async function putUser(
   data: Partial<UserInfo>
 ): Promise<UserInfo> {
   // 允许更新的字段
-  const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile'];
+  const allowedFields = ['email', 'realName', 'phone', 'idCard', 'avatar', 'gender', 'schoolName', 'certificateFile', 'tokenBalance', 'walletAddress'];
 
   const updateFields: string[] = [];
   const values: any[] = [];

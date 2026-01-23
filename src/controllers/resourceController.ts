@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { createResourceService, updateResourceService, getResourceListService, getResourceService } from '../services/resourceService';
+import { createTokenRewardTransactionService } from '../services/tokenTransactionService';
 import { ResourceInfo } from '../types/resourceType';
+import { TokenTransactionInfo } from '../types/tokenTransactionType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -260,6 +262,69 @@ export async function getResourceController(req: AuthRequest, res: Response) {
     code: StatusCode.SUCCESS,
     message: 'Get resource successfully',
     data: data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 领取上传资源奖励
+ * 教师上传资源后，可以领取代币奖励
+ */
+export async function claimResourceUploadRewardController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+  const { resourceId, walletAddress } = req.body as { resourceId?: number; walletAddress?: string };
+
+  // 验证必需字段
+  if (!resourceId) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'resourceId is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  if (!walletAddress) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'walletAddress is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 resourceId
+  if (typeof resourceId !== 'number' || resourceId <= 0) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 walletAddress
+  if (typeof walletAddress !== 'string' || walletAddress.trim() === '') {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid walletAddress',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    data = await createTokenRewardTransactionService(userId, 1, resourceId, walletAddress.trim());
+  } catch (error) {
+    console.error('Claim resource upload reward controller error:', error);
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to claim resource upload reward',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<TokenTransactionInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Resource upload reward claimed successfully',
+    data,
   };
   return res.status(200).json(response);
 }

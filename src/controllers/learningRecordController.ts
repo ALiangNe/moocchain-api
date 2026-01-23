@@ -1,7 +1,9 @@
 import { Response } from 'express';
 import { completeLearningRecordService, reportLearningTimeService, updateLearningProgressService, submitReviewService, getLearningRecordListService, getLearningRecordService, getLearningHistoryListService, } from '../services/learningRecordService';
+import { createTokenRewardTransactionService } from '../services/tokenTransactionService';
 import { LearningRecordInfo } from '../types/learningRecordType';
 import { ResourceInfo } from '../types/resourceType';
+import { TokenTransactionInfo } from '../types/tokenTransactionType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -352,6 +354,79 @@ export async function getLearningHistoryListController(req: AuthRequest, res: Re
   const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
     code: StatusCode.SUCCESS,
     message: 'Get learning history list successfully',
+    data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 领取学习完成奖励
+ * 学生完成资源学习后，可以领取代币奖励
+ */
+export async function claimLearningRewardController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+  const { resourceId, rewardType, walletAddress } = req.body as { resourceId?: number; rewardType?: number; walletAddress?: string };
+
+  // 验证必需字段
+  if (!resourceId) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'resourceId is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  if (!walletAddress) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'walletAddress is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 resourceId
+  if (typeof resourceId !== 'number' || resourceId <= 0) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 walletAddress
+  if (typeof walletAddress !== 'string' || walletAddress.trim() === '') {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid walletAddress',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 rewardType（如果未提供，默认为 0：学习完成）
+  const rewardTypeNum = rewardType !== undefined ? Number(rewardType) : 0;
+  if (isNaN(rewardTypeNum) || rewardTypeNum < 0) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid rewardType',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    data = await createTokenRewardTransactionService(userId, rewardTypeNum, resourceId, walletAddress.trim());
+  } catch (error) {
+    console.error('Claim learning reward controller error:', error);
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to claim learning reward',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<TokenTransactionInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Learning reward claimed successfully',
     data,
   };
   return res.status(200).json(response);
