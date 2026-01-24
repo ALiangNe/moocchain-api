@@ -53,6 +53,22 @@ export function validateCertificateTemplate(templateContent: string): Certificat
     throw new Error('canvas.background.gradient is required when type is gradient');
   }
 
+  // 验证border配置（可选）
+  if (canvas.border) {
+    if (typeof canvas.border !== 'object') {
+      throw new Error('canvas.border must be an object');
+    }
+    if (typeof canvas.border.width !== 'number' || canvas.border.width < 0) {
+      throw new Error('canvas.border.width must be a non-negative number');
+    }
+    if (canvas.border.color && typeof canvas.border.color !== 'string') {
+      throw new Error('canvas.border.color must be a string');
+    }
+    if (canvas.border.style && !['solid', 'dashed', 'dotted'].includes(canvas.border.style)) {
+      throw new Error('canvas.border.style must be one of: solid, dashed, dotted');
+    }
+  }
+
   // 5. 验证fields数组
   if (!Array.isArray(parsed.fields)) {
     throw new Error('fields must be an array');
@@ -81,8 +97,8 @@ export function validateCertificateTemplate(templateContent: string): Certificat
     fieldKeys.add(field.key);
 
     // 验证type
-    if (!['text', 'date', 'image'].includes(field.type)) {
-      throw new Error(`fields[${index}].type must be one of: text, date, image`);
+    if (!['text', 'date', 'image', 'shape'].includes(field.type)) {
+      throw new Error(`fields[${index}].type must be one of: text, date, image, shape`);
     }
 
     // 验证position
@@ -93,19 +109,43 @@ export function validateCertificateTemplate(templateContent: string): Certificat
       throw new Error(`fields[${index}].position.x and position.y must be numbers`);
     }
 
-    // 验证style
-    if (!field.style || typeof field.style !== 'object') {
-      throw new Error(`fields[${index}].style is required and must be an object`);
-    }
-    if (typeof field.style.fontSize !== 'number' || field.style.fontSize <= 0) {
-      throw new Error(`fields[${index}].style.fontSize must be a positive number`);
-    }
-    if (!field.style.color || typeof field.style.color !== 'string') {
-      throw new Error(`fields[${index}].style.color is required and must be a string`);
+    // 验证style（image类型不需要style，其他类型需要）
+    if (field.type !== 'image') {
+      if (!field.style || typeof field.style !== 'object') {
+        throw new Error(`fields[${index}].style is required and must be an object`);
+      }
+      
+      if (field.type === 'text' || field.type === 'date') {
+        if (typeof field.style.fontSize !== 'number' || field.style.fontSize <= 0) {
+          throw new Error(`fields[${index}].style.fontSize must be a positive number`);
+        }
+        if (!field.style.color || typeof field.style.color !== 'string') {
+          throw new Error(`fields[${index}].style.color is required and must be a string`);
+        }
+      } else if (field.type === 'shape') {
+        // 形状类型的样式验证（可选）
+        if (field.style.fillColor && typeof field.style.fillColor !== 'string') {
+          throw new Error(`fields[${index}].style.fillColor must be a string`);
+        }
+        if (field.style.strokeColor && typeof field.style.strokeColor !== 'string') {
+          throw new Error(`fields[${index}].style.strokeColor must be a string`);
+        }
+        if (field.style.strokeWidth && (typeof field.style.strokeWidth !== 'number' || field.style.strokeWidth < 0)) {
+          throw new Error(`fields[${index}].style.strokeWidth must be a non-negative number`);
+        }
+        // 验证通用颜色属性（用于几何装饰、分隔线、徽章等）
+        if (field.style.color && typeof field.style.color !== 'string') {
+          throw new Error(`fields[${index}].style.color must be a string`);
+        }
+        // 验证代币颜色（用于勋章）
+        if (field.style.coinColor && typeof field.style.coinColor !== 'string') {
+          throw new Error(`fields[${index}].style.coinColor must be a string`);
+        }
+      }
     }
 
-    // 验证align（如果提供）
-    if (field.style.align && !['left', 'center', 'right'].includes(field.style.align)) {
+    // 验证align（如果提供，且字段有style）
+    if (field.style && field.style.align && !['left', 'center', 'right'].includes(field.style.align)) {
       throw new Error(`fields[${index}].style.align must be one of: left, center, right`);
     }
 
@@ -120,6 +160,30 @@ export function validateCertificateTemplate(templateContent: string): Certificat
     // 验证image类型的src
     if (field.type === 'image' && !field.src) {
       throw new Error(`fields[${index}].src is required when type is image`);
+    }
+
+    // 验证shape类型的shape和size
+    if (field.type === 'shape') {
+      const validShapes = ['medal', 'circle', 'star', 'geometric', 'line', 'badge'];
+      if (field.shape && !validShapes.includes(field.shape)) {
+        throw new Error(`fields[${index}].shape must be one of: ${validShapes.join(', ')}`);
+      }
+      if (field.size && (typeof field.size !== 'number' || field.size <= 0)) {
+        throw new Error(`fields[${index}].size must be a positive number`);
+      }
+      // 验证badge类型的badgeType
+      if (field.shape === 'badge' && field.badgeType) {
+        const validBadgeTypes = ['certified', 'graduation', 'official'];
+        if (!validBadgeTypes.includes(field.badgeType)) {
+          throw new Error(`fields[${index}].badgeType must be one of: ${validBadgeTypes.join(', ')}`);
+        }
+      }
+      // 验证line类型的width（在style中）
+      if (field.shape === 'line' && field.style && field.style.width) {
+        if (typeof field.style.width !== 'number' || field.style.width <= 0) {
+          throw new Error(`fields[${index}].style.width must be a positive number`);
+        }
+      }
     }
   });
 

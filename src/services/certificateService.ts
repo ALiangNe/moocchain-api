@@ -9,7 +9,7 @@ import { getResourceList } from '../models/resourceModel';
 import { getLearningRecordList } from '../models/learningRecordModel';
 import { uploadFileToIPFS } from '../utils/pinataIpfs';
 import { ROLE_STUDENT } from '../middlewares/roleMiddleware';
-import { Canvas } from 'skia-canvas';
+import { generateCertificateImage } from '../utils/certificateTemplateDraw';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
@@ -208,92 +208,45 @@ async function mergeCertificateData(
       // 特殊字段处理
       switch (field.key) {
         case 'studentName':
+        case 'studentNameLabel':
           field.value = student.realName || student.username;
           break;
         case 'courseName':
+          // 强制覆盖课程名称
           field.value = course.courseName;
           break;
-        case 'issueDate':
-          field.value = new Date().toLocaleDateString('zh-CN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-          break;
-        case 'issuerName':
-          if (!field.value) {
-            field.value = `${teacher.realName || teacher.username} 教授`;
+        case 'certificateText':
+        case 'certificateText1':
+          // 替换证书正文中的课程名称占位符
+          if (field.value) {
+            if (field.value.includes('<在此完成>')) {
+              field.value = field.value.replace('<在此完成>', course.courseName);
+            }
+            if (field.value.includes('<课程名称>')) {
+              field.value = field.value.replace('<课程名称>', course.courseName);
+            }
           }
+          break;
+        case 'issueDate':
+          // 使用ISO格式日期字符串，以便日期格式化函数正确处理
+          field.value = new Date().toISOString().split('T')[0];
+          break;
+        case 'teacherName':
+          // 强制覆盖教师名字
+          field.value = teacher.realName || teacher.username || '';
           break;
         case 'teacherSchool':
-          if (!field.value) {
-            field.value = teacher.schoolName || '';
-          }
+        case 'teacherSchoolLabel':
+          // 强制覆盖教师学校
+          field.value = teacher.schoolName || '';
+          break;
+        case 'issuerName':
+          // 强制覆盖颁发者名称
+          field.value = teacher.realName || teacher.username || '';
           break;
       }
     }
   }
 
   return mergedData;
-}
-
-/**
- * 生成证书图片
- * 使用skia-canvas和sharp生成证书图片
- */
-async function generateCertificateImage(templateData: any): Promise<Buffer> {
-  try {
-    const { canvas: canvasConfig, fields } = templateData;
-    const width = canvasConfig?.width || 1600;
-    const height = canvasConfig?.height || 1200;
-
-    // 创建Canvas
-    const canvas = new Canvas(width, height);
-    const ctx = canvas.getContext('2d');
-
-    // 设置白色背景
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, width, height);
-
-    // 设置默认字体和样式
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // 渲染字段
-    for (const field of fields || []) {
-      if (field.type !== 'text') continue;
-
-      const value = field.value || '';
-      const position = field.position || {};
-      const style = field.style || {};
-
-      // 设置字体
-      ctx.font = `${style.fontWeight || 'normal'} ${style.fontSize || 24}px ${style.fontFamily || 'Arial'}`;
-      ctx.fillStyle = style.color || '#000000';
-
-      // 设置对齐方式
-      ctx.textAlign = style.align === 'left' ? 'left' : style.align === 'right' ? 'right' : 'center';
-
-      // 绘制文本
-      ctx.fillText(
-        value,
-        position.x || width / 2,
-        position.y || height / 2
-      );
-    }
-
-    // 转换为Buffer
-    const pngBuffer = await canvas.toBuffer('png');
-
-    // 使用sharp优化图片质量
-    const optimizedBuffer = await sharp(pngBuffer)
-      .png({ quality: 90 })
-      .toBuffer();
-
-    return optimizedBuffer;
-  } catch (error) {
-    console.error('Generate certificate image failed:', error);
-    throw new Error(`Failed to generate certificate image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
 }
