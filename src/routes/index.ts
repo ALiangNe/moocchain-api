@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerController, loginController, updateUserController } from '../controllers/userController';
+import { registerController, loginController, updateUserController, getUserListController, adminUpdateUserController } from '../controllers/userController';
 import { refreshTokenController, logoutController, getCurrentUserController } from '../controllers/authController';
 import { uploadAvatarController, uploadCertificateController } from '../controllers/uploadController';
 import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, approveCourseApplicationController, getAuditRecordListController, reapplyCourseAuditController, reapplyResourceAuditController } from '../controllers/auditRecordController';
@@ -27,6 +27,8 @@ router.get('/getCurrentUser', authMiddleware, getCurrentUserController);
 router.post('/login', loginController);
 router.post('/register', registerController);
 router.put('/updateUser', authMiddleware, updateUserController);
+router.get('/getUserList', authMiddleware, checkRole(0), getUserListController);
+router.put('/adminUpdateUser/:userId', authMiddleware, checkRole(0), adminUpdateUserController);
 router.post('/uploadAvatar', authMiddleware, uploadAvatar.single('avatar'), uploadAvatarController);
 
 // AuditRecord
@@ -71,7 +73,7 @@ router.get('/getCertificateTemplate/:templateId', authMiddleware, getCertificate
 // ResourceCertificateConfig
 router.post('/createResourceCertificateConfig', authMiddleware, checkRole(4), createResourceCertificateConfigController);
 router.put('/updateResourceCertificateConfig/:configId', authMiddleware, checkRole(4), updateResourceCertificateConfigController);
-router.get('/getResourceCertificateConfigList', authMiddleware, checkRole(0, 4), getResourceCertificateConfigListController);
+router.get('/getResourceCertificateConfigList', authMiddleware, checkRole(0, 4, 5), getResourceCertificateConfigListController);
 router.get('/getResourceCertificateConfig/:configId', authMiddleware, checkRole(0, 4), getResourceCertificateConfigController);
 
 // Certificate
