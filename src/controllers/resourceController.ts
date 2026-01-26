@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createResourceService, updateResourceService, getResourceListService, getResourceService } from '../services/resourceService';
-import { createTokenRewardTransactionService } from '../services/tokenTransactionService';
+import { createTokenRewardTransactionService, createTokenConsumeTransactionService } from '../services/tokenTransactionService';
 import { ResourceInfo } from '../types/resourceType';
 import { TokenTransactionInfo } from '../types/tokenTransactionType';
 import { ResponseType } from '../types/responseType';
@@ -324,6 +324,87 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
   const response: ResponseType<TokenTransactionInfo> = {
     code: StatusCode.SUCCESS,
     message: 'Resource upload reward claimed successfully',
+    data,
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 购买资源
+ * 用户购买付费资源，前端完成区块链转账后，调用此接口记录交易
+ */
+export async function buyResourceController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+  const { resourceId, transactionHash, walletAddress } = req.body as { resourceId?: number; transactionHash?: string; walletAddress?: string };
+
+  // 验证必需字段
+  if (!resourceId) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'resourceId is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  if (!transactionHash) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'transactionHash is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  if (!walletAddress) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'walletAddress is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 resourceId
+  if (typeof resourceId !== 'number' || resourceId <= 0) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 transactionHash
+  if (typeof transactionHash !== 'string' || transactionHash.trim() === '') {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid transactionHash',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验证 walletAddress
+  if (typeof walletAddress !== 'string' || walletAddress.trim() === '') {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid walletAddress',
+    };
+    return res.status(400).json(response);
+  }
+
+  let data;
+  try {
+    // 调用服务记录交易：consumeType=0（购买资源），relatedId=resourceId
+    data = await createTokenConsumeTransactionService(userId, 0, resourceId, transactionHash.trim(), walletAddress.trim());
+  } catch (error) {
+    console.error('Buy resource controller error:', error);
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: error instanceof Error ? error.message : 'Failed to buy resource',
+    };
+    return res.status(400).json(response);
+  }
+
+  const response: ResponseType<TokenTransactionInfo> = {
+    code: StatusCode.SUCCESS,
+    message: 'Resource purchased successfully',
     data,
   };
   return res.status(200).json(response);
