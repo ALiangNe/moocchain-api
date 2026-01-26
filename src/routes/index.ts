@@ -78,10 +78,10 @@ router.get('/getResourceCertificateConfigList', authMiddleware, checkRole(0, 4, 
 router.get('/getResourceCertificateConfig/:configId', authMiddleware, checkRole(0, 4), getResourceCertificateConfigController);
 
 // Certificate
-router.post('/createCertificate', authMiddleware, checkRole(5), createCertificateController);
+router.post('/createCertificate', authMiddleware, checkRole(4,5), createCertificateController);
 router.get('/getCertificateList', authMiddleware, getCertificateListController);
 router.get('/getCertificate/:certificateId', authMiddleware, getCertificateController);
-router.put('/updateCertificateNft/:certificateId', authMiddleware, checkRole(5), updateCertificateNftController);
+router.put('/updateCertificateNft/:certificateId', authMiddleware, checkRole(4, 5), updateCertificateNftController);
 
 // TokenRule
 router.post('/createTokenRule', authMiddleware, checkRole(0), createTokenRuleController);

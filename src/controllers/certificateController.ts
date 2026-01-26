@@ -4,6 +4,7 @@ import { CertificateInfo } from '../types/certificateType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { ROLE_TEACHER, ROLE_STUDENT } from '../middlewares/roleMiddleware';
 
 /**
  * 创建证书（学生领取证书）
@@ -54,11 +55,15 @@ export async function createCertificateController(req: AuthRequest, res: Respons
 /**
  * 获取证书列表
  * 支持按学生ID、教师ID、课程ID筛选和分页
+ * 如果查询参数中没有 studentId 或 teacherId，则根据用户角色自动设置：
+ * - 学生：使用当前登录用户的 userId 作为 studentId（查询自己领取的证书）
+ * - 教师：使用当前登录用户的 userId 作为 studentId（查询自己领取的证书，因为证书表中的 studentId 字段存储的是领取证书的用户ID）
  */
 export async function getCertificateListController(req: AuthRequest, res: Response) {
   const { studentId, teacherId, courseId } = req.query;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
+  const userRole = req.user!.role;
 
   const params: Partial<CertificateInfo> = {};
 
@@ -67,13 +72,19 @@ export async function getCertificateListController(req: AuthRequest, res: Respon
     if (!isNaN(studentIdNum)) {
       params.studentId = studentIdNum;
     }
+  } else if (userRole === ROLE_STUDENT || userRole === ROLE_TEACHER) {
+    // 如果查询参数中没有 studentId，且用户是学生或教师，使用当前登录用户的 userId（查询自己领取的证书）
+    // 注意：证书表中的 studentId 字段存储的是领取证书的用户ID，无论是学生还是教师领取，都存储在 studentId 字段中
+    params.studentId = req.user!.userId;
   }
+
   if (teacherId) {
     const teacherIdNum = parseInt(teacherId as string);
     if (!isNaN(teacherIdNum)) {
       params.teacherId = teacherIdNum;
     }
   }
+
   if (courseId) {
     const courseIdNum = parseInt(courseId as string);
     if (!isNaN(courseIdNum)) {
@@ -139,7 +150,7 @@ export async function getCertificateController(req: AuthRequest, res: Response) 
 
 /**
  * 更新证书的链上信息（NFT TokenId 和交易哈希）
- * 仅证书所属学生可以更新
+ * 证书所属学生或教师可以更新
  */
 export async function updateCertificateNftController(req: AuthRequest, res: Response) {
   const studentId = req.user!.userId;

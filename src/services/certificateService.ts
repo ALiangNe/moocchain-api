@@ -8,7 +8,7 @@ import { getCertificateTemplate } from '../models/certificateTemplateModel';
 import { getResourceList } from '../models/resourceModel';
 import { getLearningRecordList } from '../models/learningRecordModel';
 import { uploadFileToIPFS } from '../utils/pinataIpfs';
-import { ROLE_STUDENT } from '../middlewares/roleMiddleware';
+import { ROLE_STUDENT, ROLE_TEACHER } from '../middlewares/roleMiddleware';
 import { generateCertificateImage } from '../utils/certificateTemplateDraw';
 import sharp from 'sharp';
 import fs from 'fs';
@@ -16,19 +16,19 @@ import path from 'path';
 
 /**
  * 创建证书服务
- * 学生领取证书的核心业务逻辑
+ * 学生和教师领取证书的核心业务逻辑
  */
 export async function createCertificateService(
   studentId: number,
   courseId: number
 ): Promise<CertificateInfo> {
-  // 1. 检查学生是否存在且为学生角色
+  // 1. 检查用户是否存在且为学生或教师角色
   const student = await getUser({ userId: studentId });
   if (!student) {
-    throw new Error('Student not found');
+    throw new Error('User not found');
   }
-  if (student.role !== ROLE_STUDENT) {
-    throw new Error('Only students can claim certificates');
+  if (student.role !== ROLE_STUDENT && student.role !== ROLE_TEACHER) {
+    throw new Error('Only students and teachers can claim certificates');
   }
 
   // 2. 检查课程是否存在
@@ -144,7 +144,7 @@ export async function getCertificateService(certificateId: number): Promise<Cert
 
 /**
  * 更新证书的链上信息（NFT TokenId 和交易哈希）
- * 仅允许证书所属学生更新
+ * 允许证书所属学生或教师更新（studentId 字段存储的是领取证书的用户ID，可能是学生也可能是教师）
  */
 export async function updateCertificateNftService(
   studentId: number,

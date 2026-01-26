@@ -4,18 +4,24 @@ import { TokenTransactionInfo } from '../types/tokenTransactionType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { ROLE_ADMIN } from '../middlewares/roleMiddleware';
 
 /**
  * 获取代币交易记录列表
  * 支持按条件筛选和分页
+ * 管理员可以查询所有记录，其他用户只能查询自己的记录
  */
 export async function getTokenTransactionListController(req: AuthRequest, res: Response) {
   const userId = req.user!.userId;
+  const userRole = req.user!.role;
   const { transactionType, rewardType, consumeType, relatedId, page, pageSize } = req.query;
 
-  const params: Partial<TokenTransactionInfo> = {
-    userId,
-  };
+  const params: Partial<TokenTransactionInfo> = {};
+
+  // 管理员可以查询所有记录，其他用户只能查询自己的记录
+  if (userRole !== ROLE_ADMIN) {
+    params.userId = userId;
+  }
 
   if (transactionType !== undefined) {
     const transactionTypeNum = parseInt(transactionType as string);
