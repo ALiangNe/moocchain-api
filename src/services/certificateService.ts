@@ -1,4 +1,4 @@
-import { CertificateInfo } from '../types/certificateType';
+import { CertificateInfo, CertificateInfoQueryParams } from '../types/certificateType';
 import { ResourceInfo } from '../types/resourceType';
 import { getCertificate, postCertificate, getCertificateList, updateCertificateNft } from '../models/certificateModel';
 import { getUser } from '../models/userModel';
@@ -120,10 +120,10 @@ export async function createCertificateService(
 
 /**
  * 获取证书列表服务
- * 支持按学生ID、教师ID、课程ID筛选
+ * 支持按学生ID、教师ID、课程ID、教师姓名、日期范围筛选
  */
 export async function getCertificateListService(
-  params: Partial<CertificateInfo>,
+  params: CertificateInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: CertificateInfo[]; total: number }> {

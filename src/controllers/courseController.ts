@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createCourseService, updateCourseService, getCourseListService, getCourseService } from '../services/courseService';
-import { CourseInfo } from '../types/courseType';
+import { CourseInfo, CourseInfoQueryParams } from '../types/courseType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -154,11 +154,11 @@ export async function updateCourseController(req: AuthRequest, res: Response) {
  * 支持条件筛选和分页
  */
 export async function getCourseListController(req: AuthRequest, res: Response) {
-  const { teacherId, status } = req.query;
+  const { teacherId, status, schoolName, schoolNames, teacherName, startDate, endDate } = req.query;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
 
-  const params: Partial<CourseInfo> = {};
+  const params: CourseInfoQueryParams = {};
 
   if (teacherId) {
     const teacherIdNum = parseInt(teacherId as string);
@@ -171,6 +171,30 @@ export async function getCourseListController(req: AuthRequest, res: Response) {
     if (!isNaN(statusNum)) {
       params.status = statusNum;
     }
+  }
+  if (schoolNames && Array.isArray(schoolNames)) {
+    // 支持多个学校名称（数组格式）
+    params.schoolNames = schoolNames.map(String);
+  }
+  if (schoolNames && typeof schoolNames === 'string') {
+    // 支持多个学校名称（逗号分隔的字符串）
+    params.schoolNames = String(schoolNames).split(',').map(s => s.trim()).filter(Boolean);
+  }
+  if (schoolName && !schoolNames) {
+    // 兼容单个学校名称查询
+    params.schoolName = String(schoolName);
+  }
+
+  if (teacherName) {
+    params.teacherName = teacherName as string;
+  }
+
+  if (startDate) {
+    params.startDate = startDate as string;
+  }
+
+  if (endDate) {
+    params.endDate = endDate as string;
   }
 
   let data;

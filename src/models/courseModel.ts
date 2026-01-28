@@ -1,5 +1,5 @@
 import { dbPool } from '../config/database';
-import { CourseInfo } from '../types/courseType';
+import { CourseInfo, CourseInfoQueryParams } from '../types/courseType';
 import { formatDateTimeForMySQL } from '../utils/formatTime';
 
 /**
@@ -71,22 +71,45 @@ export async function getCourse(
  * 支持分页和条件筛选
  */
 export async function getCourseList(
-  params: Partial<CourseInfo>,
+  params: CourseInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: CourseInfo[]; total: number }> {
-  const { teacherId, status } = params;
+  const { teacherId, status, schoolName, schoolNames, teacherName, startDate, endDate } = params;
 
   const whereConditions: string[] = [];
   const values: any[] = [];
 
   if (teacherId) {
-    whereConditions.push('teacherId = ?');
+    whereConditions.push('c.teacherId = ?');
     values.push(teacherId);
   }
   if (status !== undefined) {
-    whereConditions.push('status = ?');
+    whereConditions.push('c.status = ?');
     values.push(status);
+  }
+  if (schoolNames && schoolNames.length > 0) {
+    // 支持多个学校名称，使用 IN 查询
+    const placeholders = schoolNames.map(() => '?').join(',');
+    whereConditions.push(`u.schoolName IN (${placeholders})`);
+    values.push(...schoolNames);
+  } else if (schoolName) {
+    // 兼容单个学校名称查询
+    whereConditions.push('u.schoolName = ?');
+    values.push(schoolName);
+  }
+  if (teacherName) {
+    whereConditions.push('(u.realName LIKE ? OR u.username LIKE ?)');
+    const teacherNamePattern = `%${teacherName}%`;
+    values.push(teacherNamePattern, teacherNamePattern);
+  }
+  if (startDate) {
+    whereConditions.push('c.courseStartTime >= ?');
+    values.push(startDate);
+  }
+  if (endDate) {
+    whereConditions.push('c.courseStartTime <= ?');
+    values.push(endDate);
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -97,7 +120,10 @@ export async function getCourseList(
   let countRows;
   try {
     [countRows] = await dbPool.query(
-      `SELECT COUNT(*) as total FROM course ${whereClause}`,
+      `SELECT COUNT(*) as total
+       FROM course c
+       LEFT JOIN user u ON c.teacherId = u.userId
+       ${whereClause}`,
       values
     );
   } catch (error) {

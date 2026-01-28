@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createCertificateTemplateService, updateCertificateTemplateService, getCertificateTemplateListService, getCertificateTemplateService } from '../services/certificateTemplateService';
-import { CertificateTemplateInfo } from '../types/certificateTemplateType';
+import { CertificateTemplateInfo, CertificateTemplateInfoQueryParams } from '../types/certificateTemplateType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -106,11 +106,11 @@ export async function updateCertificateTemplateController(req: AuthRequest, res:
  * 支持条件筛选和分页
  */
 export async function getCertificateTemplateListController(req: AuthRequest, res: Response) {
-  const { createdBy, isActive } = req.query;
+  const { createdBy, isActive, startDate, endDate } = req.query;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
 
-  const params: Partial<CertificateTemplateInfo> = {};
+  const params: CertificateTemplateInfoQueryParams = {};
 
   if (createdBy) {
     const createdByNum = parseInt(createdBy as string);
@@ -123,6 +123,12 @@ export async function getCertificateTemplateListController(req: AuthRequest, res
     if (!isNaN(isActiveNum)) {
       params.isActive = isActiveNum;
     }
+  }
+  if (startDate !== undefined) {
+    params.startDate = String(startDate);
+  }
+  if (endDate !== undefined) {
+    params.endDate = String(endDate);
   }
 
   let data;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createTokenRuleService, updateTokenRuleService, getTokenRuleListService, getTokenRuleService } from '../services/tokenRuleService';
-import { TokenRuleInfo } from '../types/tokenRuleType';
+import { TokenRuleInfo, TokenRuleInfoQueryParams } from '../types/tokenRuleType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -164,11 +164,11 @@ export async function updateTokenRuleController(req: AuthRequest, res: Response)
  * 支持条件筛选和分页
  */
 export async function getTokenRuleListController(req: AuthRequest, res: Response) {
-  const { rewardType, isEnabled } = req.query;
+  const { rewardType, isEnabled, startDate, endDate } = req.query;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
 
-  const params: Partial<TokenRuleInfo> = {};
+  const params: TokenRuleInfoQueryParams = {};
 
   if (rewardType !== undefined) {
     const rewardTypeNum = parseInt(rewardType as string);
@@ -181,6 +181,12 @@ export async function getTokenRuleListController(req: AuthRequest, res: Response
     if (!isNaN(isEnabledNum)) {
       params.isEnabled = isEnabledNum;
     }
+  }
+  if (startDate !== undefined) {
+    params.startDate = String(startDate);
+  }
+  if (endDate !== undefined) {
+    params.endDate = String(endDate);
   }
 
   let data;

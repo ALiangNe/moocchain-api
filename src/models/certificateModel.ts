@@ -1,5 +1,5 @@
 import { dbPool } from '../config/database';
-import { CertificateInfo } from '../types/certificateType';
+import { CertificateInfo, CertificateInfoQueryParams } from '../types/certificateType';
 
 
 
@@ -99,11 +99,11 @@ export async function postCertificate(
  * 支持分页和条件筛选
  */
 export async function getCertificateList(
-    params: Partial<CertificateInfo>,
+    params: CertificateInfoQueryParams,
     page: number = 1,
     pageSize: number = 10
 ): Promise<{ records: CertificateInfo[]; total: number }> {
-    const { studentId, teacherId, courseId } = params;
+    const { studentId, teacherId, courseId, teacherName, startDate, endDate } = params;
 
     const whereConditions: string[] = [];
     const values: any[] = [];
@@ -120,16 +120,33 @@ export async function getCertificateList(
         whereConditions.push('c.courseId = ?');
         values.push(courseId);
     }
+    if (teacherName) {
+        whereConditions.push('(t.realName LIKE ? OR t.username LIKE ?)');
+        const teacherNamePattern = `%${teacherName}%`;
+        values.push(teacherNamePattern, teacherNamePattern);
+    }
+    if (startDate) {
+        whereConditions.push('c.createdAt >= ?');
+        values.push(startDate);
+    }
+    if (endDate) {
+        whereConditions.push('c.createdAt <= ?');
+        values.push(endDate);
+    }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const offset = (page - 1) * pageSize;
 
-    // 查询总数
+    // 查询总数（需要 JOIN 以支持 teacherName 筛选）
     let countRows;
     try {
         [countRows] = await dbPool.query(
-            `SELECT COUNT(*) as total FROM certificate c ${whereClause}`,
+            `SELECT COUNT(*) as total 
+            FROM certificate c
+            LEFT JOIN course co ON c.courseId = co.courseId
+            LEFT JOIN user t ON co.teacherId = t.userId
+            ${whereClause}`,
             values
         );
     } catch (error) {

@@ -1,4 +1,4 @@
-import { TokenRuleInfo } from '../types/tokenRuleType';
+import { TokenRuleInfo, TokenRuleInfoQueryParams } from '../types/tokenRuleType';
 import { getTokenRule, postTokenRule, putTokenRule, getTokenRuleList } from '../models/tokenRuleModel';
 import { getUser } from '../models/userModel';
 import { ROLE_ADMIN } from '../middlewares/roleMiddleware';
@@ -80,7 +80,7 @@ export async function updateTokenRuleService(
  * 支持按条件筛选和分页
  */
 export async function getTokenRuleListService(
-  params: Partial<TokenRuleInfo>,
+  params: TokenRuleInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: TokenRuleInfo[]; total: number }> {

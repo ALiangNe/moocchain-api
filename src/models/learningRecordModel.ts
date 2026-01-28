@@ -1,5 +1,5 @@
 import { dbPool } from '../config/database';
-import { LearningRecordInfo } from '../types/learningRecordType';
+import { LearningRecordInfo, LearningRecordInfoQueryParams } from '../types/learningRecordType';
 import { ResourceInfo } from '../types/resourceType';
 
 /**
@@ -295,7 +295,8 @@ export async function putLearningRecord(
 export async function getLearningHistoryList(
   studentId: number,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  params: LearningRecordInfoQueryParams = {}
 ): Promise<{ records: ResourceInfo[]; total: number }> {
   if (!studentId) {
     throw new Error('studentId is required');
@@ -303,15 +304,46 @@ export async function getLearningHistoryList(
 
   const offset = (page - 1) * pageSize;
 
-  // 查询去重后的资源总数
+  // 构建 WHERE 条件（用于基础筛选）
+  const baseWhereConditions: string[] = ['lr.studentId = ?'];
+  const baseValues: any[] = [studentId];
+
+  // 教师姓名筛选（模糊查询）
+  if (params.teacherName) {
+    baseWhereConditions.push('(u.realName LIKE ? OR u.username LIKE ?)');
+    const teacherNamePattern = `%${params.teacherName}%`;
+    baseValues.push(teacherNamePattern, teacherNamePattern);
+  }
+
+  // 资源类型筛选
+  if (params.resourceType !== undefined) {
+    baseWhereConditions.push('r.resourceType = ?');
+    baseValues.push(params.resourceType);
+  }
+
+  const baseWhereClause = baseWhereConditions.length > 0 ? `WHERE ${baseWhereConditions.join(' AND ')}` : '';
+
+  // 构建 HAVING 条件（用于 isCompleted 筛选）
+  const havingClause = params.isCompleted !== undefined
+    ? (params.isCompleted === 1 ? 'HAVING MAX(lr.isCompleted) = 1' : 'HAVING (MAX(lr.isCompleted) = 0 OR MAX(lr.isCompleted) IS NULL)')
+    : '';
+
+  // 查询去重后的资源总数（使用子查询）
   let countRows;
   try {
     [countRows] = await dbPool.query(
-      `SELECT COUNT(DISTINCT r.resourceId) AS total
+      `SELECT COUNT(*) AS total
+       FROM (
+         SELECT r.resourceId
        FROM learningRecord lr
        JOIN resource r ON lr.resourceId = r.resourceId
-       WHERE lr.studentId = ?`,
-      [studentId]
+         JOIN course c ON r.courseId = c.courseId
+         LEFT JOIN user u ON c.teacherId = u.userId
+         ${baseWhereClause}
+         GROUP BY r.resourceId
+         ${havingClause}
+       ) AS subquery`,
+      baseValues
     );
   } catch (error) {
     console.error('Get learned course count failed:', error);
@@ -332,16 +364,18 @@ export async function getLearningHistoryList(
          r.resourceId, r.title, r.description, r.ipfsHash, r.resourceType, r.price, r.accessScope, r.status AS resourceStatus,
          c.courseId, c.courseName, c.description AS courseDescription, c.coverImage, c.courseStartTime, c.courseEndTime, c.status AS courseStatus,
          u.userId AS teacherUserId, u.username AS teacherUsername, u.realName AS teacherRealName, u.schoolName AS teacherSchoolName, u.avatar AS teacherAvatar,
-         MAX(lr.progress) AS learningProgress
+         MAX(lr.progress) AS learningProgress,
+         MAX(lr.isCompleted) AS maxIsCompleted
        FROM learningRecord lr
        JOIN resource r ON lr.resourceId = r.resourceId
        JOIN course c ON r.courseId = c.courseId
        LEFT JOIN user u ON c.teacherId = u.userId
-       WHERE lr.studentId = ?
+       ${baseWhereClause}
        GROUP BY r.resourceId
+       ${havingClause}
        ORDER BY MAX(lr.updatedAt) DESC
        LIMIT ? OFFSET ?`,
-      [studentId, pageSize, offset]
+      [...baseValues, pageSize, offset]
     );
   } catch (error) {
     console.error('Get learned course list failed:', error);

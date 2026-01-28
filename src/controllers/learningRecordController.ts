@@ -1,12 +1,14 @@
 import { Response } from 'express';
 import { completeLearningRecordService, reportLearningTimeService, updateLearningProgressService, submitReviewService, getLearningRecordListService, getLearningRecordService, getLearningHistoryListService, } from '../services/learningRecordService';
 import { createTokenRewardTransactionService } from '../services/tokenTransactionService';
-import { LearningRecordInfo } from '../types/learningRecordType';
+import { LearningRecordInfo, LearningRecordInfoQueryParams } from '../types/learningRecordType';
 import { ResourceInfo } from '../types/resourceType';
 import { TokenTransactionInfo } from '../types/tokenTransactionType';
-import { ResponseType } from '../types/responseType';
+import type { UserInfo } from '../types/userType';
+import type { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { getUser } from '../models/userModel';
 
 /**
  * 完成学习记录（文档/图片类型）
@@ -338,10 +340,24 @@ export async function getLearningHistoryListController(req: AuthRequest, res: Re
   const studentId = req.user!.userId;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
+  const teacherName = req.query.teacherName as string | undefined;
+  const resourceType = req.query.resourceType !== undefined ? parseInt(req.query.resourceType as string) : undefined;
+  const isCompleted = req.query.isCompleted !== undefined ? parseInt(req.query.isCompleted as string) : undefined;
+
+  const params: LearningRecordInfoQueryParams = {};
+  if (teacherName) {
+    params.teacherName = teacherName;
+  }
+  if (resourceType !== undefined && !isNaN(resourceType)) {
+    params.resourceType = resourceType;
+  }
+  if (isCompleted !== undefined && !isNaN(isCompleted)) {
+    params.isCompleted = isCompleted;
+  }
 
   let data;
   try {
-    data = await getLearningHistoryListService(studentId, page, pageSize);
+    data = await getLearningHistoryListService(studentId, page, pageSize, params);
   } catch (error) {
     console.error('Get learning history list controller error:', error);
     const response: ResponseType<{ records: ResourceInfo[]; total: number }> = {
@@ -412,9 +428,9 @@ export async function claimLearningRewardController(req: AuthRequest, res: Respo
     return res.status(400).json(response);
   }
 
-  let data;
+  let transaction;
   try {
-    data = await createTokenRewardTransactionService(userId, rewardTypeNum, resourceId, walletAddress.trim());
+    transaction = await createTokenRewardTransactionService(userId, rewardTypeNum, resourceId, walletAddress.trim());
   } catch (error) {
     console.error('Claim learning reward controller error:', error);
     const response: ResponseType<TokenTransactionInfo> = {
@@ -424,10 +440,22 @@ export async function claimLearningRewardController(req: AuthRequest, res: Respo
     return res.status(400).json(response);
   }
 
-  const response: ResponseType<TokenTransactionInfo> = {
+  // 奖励发放成功后，查询最新的用户信息（包含最新钱包地址与代币余额）
+  let user: UserInfo | null = null;
+  try {
+    user = await getUser({ userId });
+  } catch (error) {
+    console.error('Get user after claiming learning reward error:', error);
+    // 如果这里失败，不影响奖励发放结果，只是不返回最新用户信息
+  }
+
+  const response: ResponseType<{ transaction: TokenTransactionInfo; user: UserInfo | null }> = {
     code: StatusCode.SUCCESS,
     message: 'Learning reward claimed successfully',
-    data,
+    data: {
+      transaction,
+      user,
+    },
   };
   return res.status(200).json(response);
 }

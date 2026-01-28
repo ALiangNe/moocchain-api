@@ -1,5 +1,5 @@
 import { dbPool } from '../config/database';
-import { TokenTransactionInfo } from '../types/tokenTransactionType';
+import { TokenTransactionInfo, TokenTransactionInfoQueryParams } from '../types/tokenTransactionType';
 
 /**
  * 创建代币交易记录
@@ -86,11 +86,11 @@ export async function postTokenTransaction(
  * 根据条件动态构建查询语句，支持按 userId、transactionType、rewardType、consumeType 查询和分页
  */
 export async function getTokenTransactionList(
-  conditions: Partial<TokenTransactionInfo>,
+  conditions: TokenTransactionInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: TokenTransactionInfo[]; total: number }> {
-  const { userId, transactionType, rewardType, consumeType, relatedId } = conditions;
+  const { userId, transactionType, rewardType, consumeType, relatedId, startDate, endDate } = conditions;
 
   const whereConditions: string[] = [];
   const values: any[] = [];
@@ -119,6 +119,14 @@ export async function getTokenTransactionList(
   if (relatedId !== undefined) {
     whereConditions.push('tt.relatedId = ?');
     values.push(relatedId);
+  }
+  if (startDate) {
+    whereConditions.push('tt.createdAt >= ?');
+    values.push(startDate);
+  }
+  if (endDate) {
+    whereConditions.push('tt.createdAt <= ?');
+    values.push(endDate);
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';

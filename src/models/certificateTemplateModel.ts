@@ -123,11 +123,11 @@ export async function putCertificateTemplate(
  */
 
 export async function getCertificateTemplateList(
-    params: Partial<CertificateTemplateInfo>,
+    params: Partial<CertificateTemplateInfo> & { startDate?: string; endDate?: string },
     page: number = 1,
     pageSize: number = 10
 ): Promise<{ records: CertificateTemplateInfo[]; total: number }> {
-    const { createdBy, isActive } = params;
+    const { createdBy, isActive, startDate, endDate } = params;
 
     const whereConditions: string[] = [];
     const values: any[] = [];
@@ -139,6 +139,14 @@ export async function getCertificateTemplateList(
     if (isActive !== undefined) {
         whereConditions.push('ct.isActive = ?');
         values.push(isActive);
+    }
+    if (startDate) {
+        whereConditions.push('ct.createdAt >= ?');
+        values.push(startDate);
+    }
+    if (endDate) {
+        whereConditions.push('ct.createdAt <= ?');
+        values.push(endDate);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';

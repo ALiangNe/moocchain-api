@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { getTokenTransactionListService } from '../services/tokenTransactionService';
-import { TokenTransactionInfo } from '../types/tokenTransactionType';
+import { TokenTransactionInfo, TokenTransactionInfoQueryParams } from '../types/tokenTransactionType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -9,18 +9,29 @@ import { ROLE_ADMIN } from '../middlewares/roleMiddleware';
 /**
  * 获取代币交易记录列表
  * 支持按条件筛选和分页
- * 管理员可以查询所有记录，其他用户只能查询自己的记录
+ *
+ * 规则：
+ * - 非管理员：只能查询自己的记录（忽略 query.userId）
+ * - 管理员：
+ *   - 传 query.userId：查询指定用户
+ *   - 不传 query.userId：查询全部用户（用于 blockchainRecord 等全局统计）
  */
 export async function getTokenTransactionListController(req: AuthRequest, res: Response) {
   const userId = req.user!.userId;
   const userRole = req.user!.role;
-  const { transactionType, rewardType, consumeType, relatedId, page, pageSize } = req.query;
+  const { userId: queryUserId, transactionType, rewardType, consumeType, relatedId, startDate, endDate, page, pageSize } = req.query;
 
-  const params: Partial<TokenTransactionInfo> = {};
+  const params: TokenTransactionInfoQueryParams = {};
 
-  // 管理员可以查询所有记录，其他用户只能查询自己的记录
+  // 非管理员：强制只查自己
   if (userRole !== ROLE_ADMIN) {
     params.userId = userId;
+  }
+
+  // 管理员：允许指定 userId，不指定则查全部
+  if (userRole === ROLE_ADMIN && queryUserId !== undefined) {
+    const uid = parseInt(queryUserId as string);
+    if (!isNaN(uid)) params.userId = uid;
   }
 
   if (transactionType !== undefined) {
@@ -49,6 +60,14 @@ export async function getTokenTransactionListController(req: AuthRequest, res: R
     if (!isNaN(relatedIdNum)) {
       params.relatedId = relatedIdNum;
     }
+  }
+
+  if (startDate) {
+    params.startDate = startDate as string;
+  }
+
+  if (endDate) {
+    params.endDate = endDate as string;
   }
 
   const pageNum = parseInt(page as string) || 1;

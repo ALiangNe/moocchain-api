@@ -1,4 +1,4 @@
-import { LearningRecordInfo } from '../types/learningRecordType';
+import { LearningRecordInfo, LearningRecordInfoQueryParams } from '../types/learningRecordType';
 import { getLearningRecord, postLearningRecord, putLearningRecord, getLearningRecordList, getLearningHistoryList } from '../models/learningRecordModel';
 import { ResourceInfo } from '../types/resourceType';
 import { getResource } from '../models/resourceModel';
@@ -262,9 +262,10 @@ export async function getLearningRecordListService(
 export async function getLearningHistoryListService(
   studentId: number,
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  params: LearningRecordInfoQueryParams = {}
 ): Promise<{ records: ResourceInfo[]; total: number }> {
-  return await getLearningHistoryList(studentId, page, pageSize);
+  return await getLearningHistoryList(studentId, page, pageSize, params);
 }
 
 /**

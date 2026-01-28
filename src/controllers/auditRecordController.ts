@@ -305,11 +305,21 @@ export async function getAuditRecordListController(req: AuthRequest, res: Respon
     params.targetType = 0; // 用户
   } else {
     // 管理员可以按条件筛选
-    if (targetId !== undefined) params.targetId = parseInt(targetId as string);
-    if (targetType !== undefined) params.targetType = parseInt(targetType as string);
-    if (auditType !== undefined) params.auditType = parseInt(auditType as string);
-    if (auditStatus !== undefined) params.auditStatus = parseInt(auditStatus as string);
-    if (auditorId !== undefined) params.auditorId = parseInt(auditorId as string);
+    if (targetId !== undefined) {
+      params.targetId = parseInt(targetId as string);
+    }
+    if (targetType !== undefined) {
+      params.targetType = parseInt(targetType as string);
+    }
+    if (auditType !== undefined) {
+      params.auditType = parseInt(auditType as string);
+    }
+    if (auditStatus !== undefined) {
+      params.auditStatus = parseInt(auditStatus as string);
+    }
+    if (auditorId !== undefined) {
+      params.auditorId = parseInt(auditorId as string);
+    }
   }
 
   let data;

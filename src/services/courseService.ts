@@ -1,4 +1,4 @@
-import { CourseInfo } from '../types/courseType';
+import { CourseInfo, CourseInfoQueryParams } from '../types/courseType';
 import { getCourse, postCourse, putCourse, getCourseList } from '../models/courseModel';
 import { getUser } from '../models/userModel';
 import { createCourseAudit } from '../models/auditRecordModel';
@@ -94,7 +94,7 @@ export async function updateCourseService(
  * 支持按条件筛选和分页
  */
 export async function getCourseListService(
-  params: Partial<CourseInfo>,
+  params: CourseInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: CourseInfo[]; total: number }> {

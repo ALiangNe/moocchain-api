@@ -1,4 +1,4 @@
-import { TokenTransactionInfo } from '../types/tokenTransactionType';
+import { TokenTransactionInfo, TokenTransactionInfoQueryParams } from '../types/tokenTransactionType';
 import { postTokenTransaction, getTokenTransactionList } from '../models/tokenTransactionModel';
 import { getUser, putUser } from '../models/userModel';
 import { getTokenRule } from '../models/tokenRuleModel';
@@ -202,7 +202,7 @@ export async function createTokenConsumeTransactionService(
  * 支持按条件筛选和分页
  */
 export async function getTokenTransactionListService(
-  params: Partial<TokenTransactionInfo>,
+  params: TokenTransactionInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: TokenTransactionInfo[]; total: number }> {

@@ -1,4 +1,4 @@
-import { CertificateTemplateInfo } from '../types/certificateTemplateType';
+import { CertificateTemplateInfo, CertificateTemplateInfoQueryParams } from '../types/certificateTemplateType';
 import { getCertificateTemplate, postCertificateTemplate, putCertificateTemplate, getCertificateTemplateList } from '../models/certificateTemplateModel';
 import { getUser } from '../models/userModel';
 import { ROLE_ADMIN } from '../middlewares/roleMiddleware';
@@ -85,7 +85,7 @@ export async function updateCertificateTemplateService(
  * 支持按条件筛选和分页
  */
 export async function getCertificateTemplateListService(
-  params: Partial<CertificateTemplateInfo>,
+  params: CertificateTemplateInfoQueryParams,
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: CertificateTemplateInfo[]; total: number }> {

@@ -20,3 +20,10 @@ export interface LearningRecordInfo {
   // 资源信息
   resource?: ResourceInfo | null; // 资源完整信息
 }
+
+// 学习记录查询参数类型（用于列表查询）
+export interface LearningRecordInfoQueryParams extends Partial<LearningRecordInfo> {
+  teacherName?: string;           // 教师姓名（用于模糊查询，通过 JOIN course 和 user 表）
+  resourceType?: number;          // 资源类型（用于筛选，通过 JOIN resource 表）
+  isCompleted?: number;           // 是否完成（用于筛选）
+}

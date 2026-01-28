@@ -17,3 +17,10 @@ export interface CertificateInfo {
   teacher?: UserInfo | null;      // 教师完整信息
   course?: CourseInfo | null;     // 课程完整信息
 }
+
+// 证书查询参数类型（用于列表查询）
+export interface CertificateInfoQueryParams extends Partial<CertificateInfo> {
+  teacherName?: string;           // 教师姓名（用于模糊查询，通过 JOIN teacher 表）
+  startDate?: string;             // 开始日期（用于日期范围筛选，基于 createdAt）
+  endDate?: string;               // 结束日期（用于日期范围筛选，基于 createdAt）
+}

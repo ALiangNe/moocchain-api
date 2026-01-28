@@ -169,11 +169,11 @@ export async function putTokenRule(
  * 支持分页和条件筛选
  */
 export async function getTokenRuleList(
-  params: Partial<TokenRuleInfo>,
+  params: Partial<TokenRuleInfo> & { startDate?: string; endDate?: string },
   page: number = 1,
   pageSize: number = 10
 ): Promise<{ records: TokenRuleInfo[]; total: number }> {
-  const { rewardType, isEnabled } = params;
+  const { rewardType, isEnabled, startDate, endDate } = params;
 
   const whereConditions: string[] = [];
   const values: any[] = [];
@@ -185,6 +185,14 @@ export async function getTokenRuleList(
   if (isEnabled !== undefined) {
     whereConditions.push('tr.isEnabled = ?');
     values.push(isEnabled);
+  }
+  if (startDate) {
+    whereConditions.push('tr.createdAt >= ?');
+    values.push(startDate);
+  }
+  if (endDate) {
+    whereConditions.push('tr.createdAt <= ?');
+    values.push(endDate);
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';

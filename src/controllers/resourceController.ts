@@ -3,9 +3,11 @@ import { createResourceService, updateResourceService, getResourceListService, g
 import { createTokenRewardTransactionService, createTokenConsumeTransactionService } from '../services/tokenTransactionService';
 import { ResourceInfo } from '../types/resourceType';
 import { TokenTransactionInfo } from '../types/tokenTransactionType';
-import { ResponseType } from '../types/responseType';
+import type { UserInfo } from '../types/userType';
+import type { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { getUser } from '../models/userModel';
 import { uploadFileToIPFS } from '../utils/pinataIpfs';
 import path from 'path';
 import fs from 'fs';
@@ -309,9 +311,9 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
     return res.status(400).json(response);
   }
 
-  let data;
+  let transaction;
   try {
-    data = await createTokenRewardTransactionService(userId, 1, resourceId, walletAddress.trim());
+    transaction = await createTokenRewardTransactionService(userId, 1, resourceId, walletAddress.trim());
   } catch (error) {
     console.error('Claim resource upload reward controller error:', error);
     const response: ResponseType<TokenTransactionInfo> = {
@@ -321,10 +323,22 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
     return res.status(400).json(response);
   }
 
-  const response: ResponseType<TokenTransactionInfo> = {
+  // 奖励发放成功后，查询最新的用户信息（包含最新钱包地址与代币余额）
+  let user: UserInfo | null = null;
+  try {
+    user = await getUser({ userId });
+  } catch (error) {
+    console.error('Get user after claiming upload reward error:', error);
+    // 如果这里失败，不影响奖励发放结果，只是不返回最新用户信息
+  }
+
+  const response: ResponseType<{ transaction: TokenTransactionInfo; user: UserInfo | null }> = {
     code: StatusCode.SUCCESS,
     message: 'Resource upload reward claimed successfully',
-    data,
+    data: {
+      transaction,
+      user,
+    },
   };
   return res.status(200).json(response);
 }
@@ -389,10 +403,10 @@ export async function buyResourceController(req: AuthRequest, res: Response) {
     return res.status(400).json(response);
   }
 
-  let data;
+  let transaction;
   try {
     // 调用服务记录交易：consumeType=0（购买资源），relatedId=resourceId
-    data = await createTokenConsumeTransactionService(userId, 0, resourceId, transactionHash.trim(), walletAddress.trim());
+    transaction = await createTokenConsumeTransactionService(userId, 0, resourceId, transactionHash.trim(), walletAddress.trim());
   } catch (error) {
     console.error('Buy resource controller error:', error);
     const response: ResponseType<TokenTransactionInfo> = {
@@ -402,10 +416,22 @@ export async function buyResourceController(req: AuthRequest, res: Response) {
     return res.status(400).json(response);
   }
 
-  const response: ResponseType<TokenTransactionInfo> = {
+  // 购买成功后，查询最新的用户信息（包含最新钱包地址与代币余额）
+  let user: UserInfo | null = null;
+  try {
+    user = await getUser({ userId });
+  } catch (error) {
+    console.error('Get user after buying resource error:', error);
+    // 如果这里失败，不影响购买结果，只是不返回最新用户信息
+  }
+
+  const response: ResponseType<{ transaction: TokenTransactionInfo; user: UserInfo | null }> = {
     code: StatusCode.SUCCESS,
     message: 'Resource purchased successfully',
-    data,
+    data: {
+      transaction,
+      user,
+    },
   };
   return res.status(200).json(response);
 }

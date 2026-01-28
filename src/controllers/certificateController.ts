@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { createCertificateService, getCertificateListService, getCertificateService, updateCertificateNftService } from '../services/certificateService';
-import { CertificateInfo } from '../types/certificateType';
+import { CertificateInfo, CertificateInfoQueryParams } from '../types/certificateType';
 import { ResponseType } from '../types/responseType';
 import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
@@ -60,12 +60,12 @@ export async function createCertificateController(req: AuthRequest, res: Respons
  * - 教师：使用当前登录用户的 userId 作为 studentId（查询自己领取的证书，因为证书表中的 studentId 字段存储的是领取证书的用户ID）
  */
 export async function getCertificateListController(req: AuthRequest, res: Response) {
-  const { studentId, teacherId, courseId } = req.query;
+  const { studentId, teacherId, courseId, teacherName, startDate, endDate } = req.query;
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 10;
   const userRole = req.user!.role;
 
-  const params: Partial<CertificateInfo> = {};
+  const params: CertificateInfoQueryParams = {};
 
   if (studentId) {
     const studentIdNum = parseInt(studentId as string);
@@ -90,6 +90,18 @@ export async function getCertificateListController(req: AuthRequest, res: Respon
     if (!isNaN(courseIdNum)) {
       params.courseId = courseIdNum;
     }
+  }
+
+  if (teacherName) {
+    params.teacherName = teacherName as string;
+  }
+
+  if (startDate) {
+    params.startDate = startDate as string;
+  }
+
+  if (endDate) {
+    params.endDate = endDate as string;
   }
 
   let data;

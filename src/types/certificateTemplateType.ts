@@ -12,3 +12,9 @@ export interface CertificateTemplateInfo {
   // 完整的创建者信息对象
   creator?: UserInfo | null;    // 创建者完整信息
 }
+
+// 证书模板列表查询参数（用于 controller/service/model 透传）
+export interface CertificateTemplateInfoQueryParams extends Partial<CertificateTemplateInfo> {
+  startDate?: string;           // YYYY-MM-DD HH:mm:ss
+  endDate?: string;             // YYYY-MM-DD HH:mm:ss
+}
