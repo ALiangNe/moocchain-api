@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { UserInfo } from '../types/userType';
 import { getUser, postUser, putUser, getUserList, putUserByAdmin } from '../models/userModel';
 import { signAccessToken, signRefreshToken, storeRefreshTokenForUser } from './authService';
@@ -10,26 +11,38 @@ import { ROLE_ADMIN } from '../middlewares/roleMiddleware';
 export async function loginService(
   data: UserInfo
 ): Promise<{ user: UserInfo; accessToken: string; refreshToken: string }> {
-  let result;
+  if (!data.username || !data.password) {
+    throw new Error('Username and password are required');
+  }
+
+  let userWithPassword: UserInfo | null;
   try {
-    result = await getUser({ username: data.username, password: data.password });
+    userWithPassword = await getUser({ username: data.username }, { includePassword: true });
   } catch (error) {
     console.error('Login service error:', error);
     throw error;
   }
 
-  if (!result || !result.userId || !result.username) {
+  if (!userWithPassword || !userWithPassword.userId || !userWithPassword.username || !userWithPassword.password) {
     throw new Error('Invalid username or password');
   }
 
-  const accessToken = signAccessToken({ userId: result.userId, username: result.username, role: result.role });
-  const refreshToken = signRefreshToken({ userId: result.userId, username: result.username, role: result.role });
+  const isPasswordValid = await bcrypt.compare(String(data.password), String(userWithPassword.password));
+  if (!isPasswordValid) {
+    throw new Error('Invalid username or password');
+  }
+
+  // 登录成功后，不向后续流程暴露密码字段
+  const { password: _password, ...safeUser } = userWithPassword;
+
+  const accessToken = signAccessToken({ userId: safeUser.userId!, username: safeUser.username!, role: safeUser.role });
+  const refreshToken = signRefreshToken({ userId: safeUser.userId!, username: safeUser.username!, role: safeUser.role });
 
   // 存储 refresh token
-  storeRefreshTokenForUser(refreshToken, result.userId, result.username);
+  storeRefreshTokenForUser(refreshToken, safeUser.userId!, safeUser.username!);
 
   return {
-    user: result,
+    user: safeUser,
     accessToken,
     refreshToken,
   };
@@ -56,8 +69,27 @@ export async function registerService(
     throw new Error('Username already exists');
   }
 
+  // 使用 bcrypt 对密码进行哈希存储
+  if (!data.password) {
+    throw new Error('Password is required');
+  }
+
+  const saltRounds = 10;
+  let passwordHash: string;
   try {
-    result = await postUser(data);
+    passwordHash = await bcrypt.hash(String(data.password), saltRounds);
+  } catch (error) {
+    console.error('Register service bcrypt hash error:', error);
+    throw new Error('Failed to hash password');
+  }
+
+  const userToCreate: UserInfo = {
+    ...data,
+    password: passwordHash,
+  };
+
+  try {
+    result = await postUser(userToCreate);
   } catch (error) {
     console.error('Register service error:', error);
     throw error;
@@ -149,5 +181,21 @@ export async function adminUpdateUserService(
     if (emailUser && emailUser.userId !== userId) throw new Error('Email already in use');
   }
 
-  return await putUserByAdmin(userId, data);
+  let dataToUpdate: Partial<UserInfo> = data;
+
+  // 管理员修改密码：必须先 bcrypt 加密再入库（数据库只存 hash）
+  if (data.password !== undefined) {
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(String(data.password), saltRounds);
+    dataToUpdate = { ...data, password: passwordHash };
+  }
+
+  let result;
+  try {
+    result = await putUserByAdmin(userId, dataToUpdate);
+  } catch (error) {
+    console.error('Admin update user error:', error);
+    throw error;
+  }
+  return result;
 }

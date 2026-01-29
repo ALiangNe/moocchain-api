@@ -4,9 +4,11 @@ import { UserInfo } from '../types/userType';
 /**
  * 查询用户
  * 根据条件动态构建查询语句，支持按 userId、username、password、email 查询
+ * 默认不返回密码字段，如果需要密码用于登录校验，可通过 options.includePassword 显式开启
  */
 export async function getUser(
-  conditions: Partial<UserInfo>
+  conditions: Partial<UserInfo>,
+  options?: { includePassword?: boolean }
 ): Promise<UserInfo | null> {
   const { userId, username, password, email } = conditions;
 
@@ -34,10 +36,17 @@ export async function getUser(
 
   let rows;
   try {
-    [rows] = await dbPool.query(
-      `SELECT userId, username, email, walletAddress, certificateFile, realName, phone, idCard, avatar, gender, role, walletBound, tokenBalance, schoolName, createdAt, updatedAt FROM user ${whereClause}`,
-      values
-    );
+    if (options?.includePassword) {
+      [rows] = await dbPool.query(
+        'SELECT userId, username, password, email, walletAddress, certificateFile, realName, phone, idCard, avatar, gender, role, walletBound, tokenBalance, schoolName, createdAt, updatedAt FROM user ' + whereClause,
+        values
+      );
+    } else {
+      [rows] = await dbPool.query(
+        'SELECT userId, username, email, walletAddress, certificateFile, realName, phone, idCard, avatar, gender, role, walletBound, tokenBalance, schoolName, createdAt, updatedAt FROM user ' + whereClause,
+        values
+      );
+    }
   } catch (error) {
     console.error('Get user failed:', error);
     throw error;

@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -27,6 +28,7 @@
     "skia-canvas": "^3.0.8"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
