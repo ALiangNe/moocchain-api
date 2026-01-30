@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { ethers } from 'ethers';
 import { createResourceService, updateResourceService, getResourceListService, getResourceService } from '../services/resourceService';
 import { createTokenRewardTransactionService, createTokenConsumeTransactionService } from '../services/tokenTransactionService';
 import { ResourceInfo } from '../types/resourceType';
@@ -9,6 +10,9 @@ import { StatusCode } from '../constants/statusCode';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { getUser } from '../models/userModel';
 import { uploadFileToIPFS } from '../utils/pinataIpfs';
+import { getTokenRule } from '../models/tokenRuleModel';
+import { MOOC_TOKEN_ADDRESS } from '../contracts/contractAddresses';
+import { issueClaimRewardSign, getClaimRewardSign, consumeClaimRewardSign } from '../utils/eip712SignStore';
 import path from 'path';
 import fs from 'fs';
 
@@ -274,7 +278,7 @@ export async function getResourceController(req: AuthRequest, res: Response) {
  */
 export async function claimResourceUploadRewardController(req: AuthRequest, res: Response) {
   const userId = req.user!.userId;
-  const { resourceId, walletAddress } = req.body as { resourceId?: number; walletAddress?: string };
+  const { resourceId, walletAddress, signature } = req.body as { resourceId?: number; walletAddress?: string; signature?: string };
 
   // 验证必需字段
   if (!resourceId) {
@@ -311,9 +315,105 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
     return res.status(400).json(response);
   }
 
+  const rewardTypeNum = 1; // 上传资源奖励
+
+  // EIP-712：要求前端提供签名（弹 MetaMask）
+  if (!signature || typeof signature !== 'string' || signature.trim() === '') {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'signature is required',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 获取并校验 sign（nonce/amount/deadline/chainId）
+  const sign = getClaimRewardSign(userId, walletAddress.trim(), resourceId, rewardTypeNum);
+  if (!sign) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'claim sign not found, please re-initiate claim',
+    };
+    return res.status(400).json(response);
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (sign.deadline <= nowSec) {
+    consumeClaimRewardSign(userId, walletAddress.trim(), resourceId, rewardTypeNum);
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'claim sign expired, please re-initiate claim',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 规则可能变更：这里做一次对齐校验（保证签名里展示的 amount 与当前规则一致）
+  const rule = await getTokenRule({ rewardType: rewardTypeNum, isEnabled: 1 });
+  if (!rule) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Token rule not found or disabled',
+    };
+    return res.status(400).json(response);
+  }
+  const currentAmount = String(rule.rewardAmount || 0);
+  if (currentAmount !== sign.amount) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Reward amount changed, please re-initiate claim',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 验签：必须是 walletAddress 本人签的
+  const domain = {
+    name: 'MOOCChain',
+    version: '1',
+    chainId: sign.chainId,
+    verifyingContract: MOOC_TOKEN_ADDRESS,
+  };
+  const types = {
+    ClaimResourceUploadReward: [
+      { name: 'userId', type: 'uint256' },
+      { name: 'walletAddress', type: 'address' },
+      { name: 'resourceId', type: 'uint256' },
+      { name: 'rewardType', type: 'uint256' },
+      { name: 'amount', type: 'string' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ],
+  } as const;
+  const messageToVerify = {
+    userId,
+    walletAddress: walletAddress.trim(),
+    resourceId,
+    rewardType: rewardTypeNum,
+    amount: sign.amount,
+    nonce: sign.nonce,
+    deadline: sign.deadline,
+  };
+
+  let recovered: string;
+  try {
+    recovered = ethers.verifyTypedData(domain as any, types as any, messageToVerify as any, signature.trim());
+  } catch (error) {
+    console.error('Verify typed data error:', error);
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid signature',
+    };
+    return res.status(400).json(response);
+  }
+  if (recovered.toLowerCase() !== walletAddress.trim().toLowerCase()) {
+    const response: ResponseType<TokenTransactionInfo> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Signature does not match walletAddress',
+    };
+    return res.status(400).json(response);
+  }
+
   let transaction;
   try {
-    transaction = await createTokenRewardTransactionService(userId, 1, resourceId, walletAddress.trim());
+    transaction = await createTokenRewardTransactionService(userId, rewardTypeNum, resourceId, walletAddress.trim());
   } catch (error) {
     console.error('Claim resource upload reward controller error:', error);
     const response: ResponseType<TokenTransactionInfo> = {
@@ -322,6 +422,9 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
     };
     return res.status(400).json(response);
   }
+
+  // 成功后消费 sign，防止重复使用
+  consumeClaimRewardSign(userId, walletAddress.trim(), resourceId, rewardTypeNum);
 
   // 奖励发放成功后，查询最新的用户信息（包含最新钱包地址与代币余额）
   let user: UserInfo | null = null;
@@ -339,6 +442,106 @@ export async function claimResourceUploadRewardController(req: AuthRequest, res:
       transaction,
       user,
     },
+  };
+  return res.status(200).json(response);
+}
+
+/**
+ * 获取领取上传资源奖励的 EIP-712 sign（给前端弹 MetaMask 签名用）
+ */
+export async function claimResourceUploadRewardSignController(req: AuthRequest, res: Response) {
+  const userId = req.user!.userId;
+  const { resourceId, walletAddress, chainId } = req.body as { resourceId?: number; walletAddress?: string; chainId?: number };
+
+  if (!resourceId || typeof resourceId !== 'number' || resourceId <= 0) {
+    const response: ResponseType<unknown> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid resourceId',
+    };
+    return res.status(400).json(response);
+  }
+  if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim() === '') {
+    const response: ResponseType<unknown> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid walletAddress',
+    };
+    return res.status(400).json(response);
+  }
+
+  const rewardTypeNum = 1; // 上传资源奖励
+
+  const chainIdNum = chainId !== undefined ? Number(chainId) : NaN;
+  if (isNaN(chainIdNum) || chainIdNum <= 0) {
+    const response: ResponseType<unknown> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Invalid chainId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 可选：如果你希望只允许固定链，可通过环境变量约束
+  const expectedChainId = process.env.BLOCKCHAIN_CHAIN_ID ? Number(process.env.BLOCKCHAIN_CHAIN_ID) : undefined;
+  if (expectedChainId !== undefined && !isNaN(expectedChainId) && expectedChainId > 0 && expectedChainId !== chainIdNum) {
+    const response: ResponseType<unknown> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Unsupported chainId',
+    };
+    return res.status(400).json(response);
+  }
+
+  // 获取规则金额，让用户在 MetaMask 里看到"将领取多少"
+  const rule = await getTokenRule({ rewardType: rewardTypeNum, isEnabled: 1 });
+  if (!rule) {
+    const response: ResponseType<unknown> = {
+      code: StatusCode.BAD_REQUEST,
+      message: 'Token rule not found or disabled',
+    };
+    return res.status(400).json(response);
+  }
+
+  const amount = String(rule.rewardAmount || 0);
+  const deadline = Math.floor(Date.now() / 1000) + 5 * 60; // 5 分钟有效
+  const sign = issueClaimRewardSign({
+    userId,
+    walletAddress: walletAddress.trim(),
+    resourceId,
+    rewardType: rewardTypeNum,
+    chainId: chainIdNum,
+    amount,
+    deadline,
+  });
+
+  const domain = {
+    name: 'MOOCChain',
+    version: '1',
+    chainId: sign.chainId,
+    verifyingContract: MOOC_TOKEN_ADDRESS,
+  };
+  const types = {
+    ClaimResourceUploadReward: [
+      { name: 'userId', type: 'uint256' },
+      { name: 'walletAddress', type: 'address' },
+      { name: 'resourceId', type: 'uint256' },
+      { name: 'rewardType', type: 'uint256' },
+      { name: 'amount', type: 'string' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ],
+  };
+  const message = {
+    userId,
+    walletAddress: walletAddress.trim(),
+    resourceId,
+    rewardType: rewardTypeNum,
+    amount,
+    nonce: sign.nonce,
+    deadline: sign.deadline,
+  };
+
+  const response: ResponseType<{ domain: any; types: any; message: any }> = {
+    code: StatusCode.SUCCESS,
+    message: 'OK',
+    data: { domain, types, message },
   };
   return res.status(200).json(response);
 }

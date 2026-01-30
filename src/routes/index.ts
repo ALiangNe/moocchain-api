@@ -4,8 +4,8 @@ import { refreshTokenController, logoutController, getCurrentUserController } fr
 import { uploadAvatarController, uploadCertificateController } from '../controllers/uploadController';
 import { createTeacherApplicationController, approveTeacherApplicationController, approveResourceApplicationController, approveCourseApplicationController, getAuditRecordListController, reapplyCourseAuditController, reapplyResourceAuditController } from '../controllers/auditRecordController';
 import { createCourseController, updateCourseController, getCourseListController, getCourseController } from '../controllers/courseController';
-import { createResourceController, updateResourceController, getResourceListController, getResourceController, claimResourceUploadRewardController, buyResourceController } from '../controllers/resourceController';
-import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController, claimLearningRewardController } from '../controllers/learningRecordController';
+import { createResourceController, updateResourceController, getResourceListController, getResourceController, claimResourceUploadRewardController, claimResourceUploadRewardSignController, buyResourceController } from '../controllers/resourceController';
+import { completeLearningRecordController, reportLearningTimeController, updateLearningProgressController, submitReviewController, getLearningRecordListController, getLearningRecordController, getLearningHistoryListController, claimLearningRewardController, claimLearningRewardSignController } from '../controllers/learningRecordController';
 import { createCertificateTemplateController, updateCertificateTemplateController, getCertificateTemplateListController, getCertificateTemplateController } from '../controllers/certificateTemplateController';
 import { createResourceCertificateConfigController, updateResourceCertificateConfigController, getResourceCertificateConfigListController, getResourceCertificateConfigController } from '../controllers/resourceCertificateConfigController';
 import { createCertificateController, getCertificateListController, getCertificateController, updateCertificateNftController } from '../controllers/certificateController';
@@ -52,6 +52,7 @@ router.post('/createResource', authMiddleware, checkRole(0, 4), uploadResource.s
 router.put('/updateResource/:resourceId', authMiddleware, checkRole(0, 4), updateResourceController);
 router.get('/getResourceList', authMiddleware, getResourceListController);
 router.get('/getResource/:resourceId', authMiddleware, getResourceController);
+router.post('/claimResourceUploadRewardSign', authMiddleware, checkRole(0, 4), claimResourceUploadRewardSignController);
 router.post('/claimResourceUploadReward', authMiddleware, checkRole(0, 4), claimResourceUploadRewardController);
 router.post('/buyResource', authMiddleware, buyResourceController);
 
@@ -63,6 +64,7 @@ router.post('/submitReview', authMiddleware, submitReviewController);
 router.get('/getLearningRecordList', authMiddleware, getLearningRecordListController);
 router.get('/getLearningRecord/:recordId', authMiddleware, getLearningRecordController);
 router.get('/getLearningHistoryList', authMiddleware, getLearningHistoryListController);
+router.post('/claimLearningRewardSign', authMiddleware, claimLearningRewardSignController);
 router.post('/claimLearningReward', authMiddleware, claimLearningRewardController);
 
 // CertificateTemplate
