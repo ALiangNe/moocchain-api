@@ -195,56 +195,74 @@ async function mergeCertificateData(
   // 深拷贝模板
   const mergedData = JSON.parse(JSON.stringify(template));
 
-  // 合并字段数据
-  if (mergedData.fields) {
+  // 没有字段时直接返回
+  if (!Array.isArray(mergedData.fields) || mergedData.fields.length === 0) {
+    return mergedData;
+  }
+
+  // 合并字段数据（控制在单层 for 内，配合提前返回 / continue，避免深层嵌套）
     for (const field of mergedData.fields) {
-      // 优先级：教师覆盖 > 模板默认值
-      if (overrideFields && overrideFields[field.key]) {
-        field.value = overrideFields[field.key];
-      } else if (field.defaultValue) {
+    if (!field || !field.key) continue;
+
+    const key = field.key as string;
+
+    // 1. 通用覆盖逻辑：教师覆盖 > 模板默认值
+    if (overrideFields && Object.prototype.hasOwnProperty.call(overrideFields, key)) {
+      field.value = overrideFields[key];
+    } else if (field.value == null && field.defaultValue != null) {
         field.value = field.defaultValue;
       }
 
-      // 特殊字段处理
-      switch (field.key) {
-        case 'studentName':
-        case 'studentNameLabel':
+    // 2. 针对特殊字段的业务处理（使用提前 continue，避免嵌套）
+
+    // 学生姓名
+    if (key === 'studentName' || key === 'studentNameLabel') {
           field.value = student.realName || student.username;
-          break;
-        case 'courseName':
-          // 强制覆盖课程名称
+      continue;
+    }
+
+    // 课程名称
+    if (key === 'courseName') {
           field.value = course.courseName;
-          break;
-        case 'certificateText':
-        case 'certificateText1':
-          // 替换证书正文中的课程名称占位符
-          if (field.value) {
-            if (field.value.includes('<在此完成>')) {
-              field.value = field.value.replace('<在此完成>', course.courseName);
-            }
-            if (field.value.includes('<课程名称>')) {
-              field.value = field.value.replace('<课程名称>', course.courseName);
-            }
+      continue;
+    }
+
+    // 证书正文：替换课程名称占位符，仅加粗课程名称（不加书名号），前后添加空格
+    if (key === 'certificateText' || key === 'certificateText1') {
+      if (!field.value) continue;
+
+      const placeholders = ['<在此完成>', '<课程名称>', '<课程名字>', '《课程名字》'];
+      const replacement = ` <b>${course.courseName}</b> `;
+      const placeholder = placeholders.find((p) => field.value.includes(p));
+
+      if (!placeholder) continue;
+
+      field.value = field.value.replace(placeholder, replacement);
+      continue;
           }
-          break;
-        case 'issueDate':
-          // 使用ISO格式日期字符串，以便日期格式化函数正确处理
+
+    // 领证日期
+    if (key === 'issueDate') {
           field.value = new Date().toISOString().split('T')[0];
-          break;
-        case 'teacherName':
-          // 强制覆盖教师名字
+      continue;
+    }
+
+    // 教师姓名
+    if (key === 'teacherName') {
           field.value = teacher.realName || teacher.username || '';
-          break;
-        case 'teacherSchool':
-        case 'teacherSchoolLabel':
-          // 强制覆盖教师学校
+      continue;
+    }
+
+    // 教师学校
+    if (key === 'teacherSchool' || key === 'teacherSchoolLabel') {
           field.value = teacher.schoolName || '';
-          break;
-        case 'issuerName':
-          // 强制覆盖颁发者名称
+      continue;
+    }
+
+    // 颁发者名称
+    if (key === 'issuerName') {
           field.value = teacher.realName || teacher.username || '';
-          break;
-      }
+      continue;
     }
   }
 

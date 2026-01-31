@@ -124,17 +124,105 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
       
       if (!value) continue;
 
-      ctx.font = `${style.fontWeight || 'normal'} ${style.fontSize || 24}px ${style.fontFamily || 'Arial'}`;
-      ctx.fillStyle = style.color || '#000000';
-      ctx.textAlign = style.align === 'left' ? 'left' : style.align === 'right' ? 'right' : 'center';
-      ctx.textBaseline = 'top';
-      
+      // 支持fontStyle（斜体）属性
+      const fontStyle = style.fontStyle === 'italic' ? 'italic' : 'normal';
+      const baseFontSize = style.fontSize || 24;
+      const baseFontWeight = style.fontWeight || 'normal';
+      const fontFamily = style.fontFamily || 'Arial';
+      const textColor = style.color || '#000000';
       const maxWidth = style.maxWidth || width;
-      const lineHeight = style.lineHeight || style.fontSize || 24;
+      const lineHeight = style.lineHeight || baseFontSize;
       const x = position.x || width / 2;
       let y = position.y || height / 2;
       
       const text = String(value);
+      
+      // 检查是否包含加粗标记 <b>...</b>
+      const hasBoldTags = text.includes('<b>') && text.includes('</b>');
+      
+      if (hasBoldTags) {
+        // 支持部分文本加粗：解析 <b>...</b> 标记
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = textColor;
+        
+        // 按换行符分段处理
+        const paragraphs = text.split(/\r?\n/);
+        let currentY = y;
+        
+        for (const paragraph of paragraphs) {
+          if (paragraph === '') {
+            currentY += lineHeight;
+            continue;
+          }
+          
+          // 解析段落中的加粗标记
+          const parts: Array<{ text: string; bold: boolean }> = [];
+          let remaining = paragraph;
+          
+          while (remaining.length > 0) {
+            const boldStart = remaining.indexOf('<b>');
+            const boldEnd = remaining.indexOf('</b>');
+            
+            if (boldStart !== -1 && boldEnd !== -1 && boldEnd > boldStart) {
+              // 添加加粗标记前的普通文本
+              if (boldStart > 0) {
+                parts.push({ text: remaining.substring(0, boldStart), bold: false });
+              }
+              // 添加加粗文本
+              parts.push({ text: remaining.substring(boldStart + 3, boldEnd), bold: true });
+              // 继续处理剩余文本
+              remaining = remaining.substring(boldEnd + 4);
+            } else {
+              // 没有更多加粗标记，添加剩余文本
+              if (remaining.length > 0) {
+                parts.push({ text: remaining, bold: false });
+              }
+              break;
+            }
+          }
+          
+          // 计算当前行的总宽度，用于居中对齐
+          let totalWidth = 0;
+          const measurements: Array<{ width: number; text: string; bold: boolean }> = [];
+          
+          for (const part of parts) {
+            ctx.font = `${fontStyle} ${part.bold ? 'bold' : baseFontWeight} ${baseFontSize}px ${fontFamily}`;
+            const width = ctx.measureText(part.text).width;
+            totalWidth += width;
+            measurements.push({ width, text: part.text, bold: part.bold });
+          }
+          
+          // 计算起始X坐标（根据对齐方式，确保居中）
+          let currentX = x;
+          if (style.align === 'center' || style.align !== 'left' && style.align !== 'right') {
+            // 居中对齐：从中心点向左偏移总宽度的一半
+            currentX = x - totalWidth / 2;
+            ctx.textAlign = 'left'; // 使用left对齐，然后手动计算位置
+          } else if (style.align === 'right') {
+            currentX = x - totalWidth;
+            ctx.textAlign = 'left';
+          } else {
+            // left对齐
+            currentX = x;
+            ctx.textAlign = 'left';
+          }
+          
+          // 渲染各部分文本
+          for (const measure of measurements) {
+            ctx.font = `${fontStyle} ${measure.bold ? 'bold' : baseFontWeight} ${baseFontSize}px ${fontFamily}`;
+            ctx.fillText(measure.text, currentX, currentY);
+            currentX += measure.width;
+          }
+          
+          currentY += lineHeight;
+        }
+      } else {
+        // 没有加粗标记，使用原有逻辑
+        ctx.font = `${fontStyle} ${baseFontWeight} ${baseFontSize}px ${fontFamily}`;
+        ctx.fillStyle = textColor;
+        ctx.textAlign = style.align === 'left' ? 'left' : style.align === 'right' ? 'right' : 'center';
+        ctx.textBaseline = 'top';
+        
       const wrapLineByChar = (input: string, max: number): string[] => {
         const chars = input.split('');
         const lines: string[] = [];
@@ -177,6 +265,7 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         // 单行文本
         ctx.textBaseline = 'middle';
         ctx.fillText(text, x, y);
+        }
       }
       continue;
     }
@@ -218,7 +307,9 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         }
       }
 
-      ctx.font = `${style.fontWeight || 'normal'} ${style.fontSize || 24}px ${style.fontFamily || 'Arial'}`;
+      // 支持fontStyle（斜体）属性
+      const fontStyle = style.fontStyle === 'italic' ? 'italic' : 'normal';
+      ctx.font = `${fontStyle} ${style.fontWeight || 'normal'} ${style.fontSize || 24}px ${style.fontFamily || 'Arial'}`;
       ctx.fillStyle = style.color || '#000000';
       ctx.textAlign = style.align === 'left' ? 'left' : style.align === 'right' ? 'right' : 'center';
       ctx.textBaseline = 'middle';
@@ -509,7 +600,13 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
       
       ctx.save();
       
-      // 绘制徽章圆形背景
+      // 添加阴影效果
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
+      
+      // 绘制徽章圆形背景（优化渐变）
       const gradient = ctx.createRadialGradient(
         centerX - radius * 0.3,
         centerY - radius * 0.3,
@@ -518,37 +615,69 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         centerY,
         radius
       );
-      gradient.addColorStop(0, badgeColor);
-      gradient.addColorStop(1, darkenColor(badgeColor, 0.3));
+      gradient.addColorStop(0, lightenColor(badgeColor, 0.2));
+      gradient.addColorStop(0.4, badgeColor);
+      gradient.addColorStop(1, darkenColor(badgeColor, 0.4));
       
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // 添加边框
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 2;
+      // 重置阴影
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      
+      // 添加更明显的边框
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = Math.max(3, radius * 0.05);
       ctx.stroke();
       
-      // 绘制徽章图标
+      // 添加内边框（增加层次感）
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.lineWidth = Math.max(1, radius * 0.02);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius - Math.max(3, radius * 0.05), 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // 绘制徽章图标（根据大小调整线条粗细）
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = Math.max(5, radius * 0.08);
       
       if (badgeType === 'certified') {
-        // 绘制对勾（更粗更明显）
+        // 绘制对勾（更粗更明显，优化比例）
         ctx.beginPath();
-        ctx.moveTo(centerX - radius * 0.25, centerY);
-        ctx.lineTo(centerX - radius * 0.05, centerY + radius * 0.25);
-        ctx.lineTo(centerX + radius * 0.35, centerY - radius * 0.25);
+        ctx.moveTo(centerX - radius * 0.28, centerY - radius * 0.05);
+        ctx.lineTo(centerX - radius * 0.08, centerY + radius * 0.2);
+        ctx.lineTo(centerX + radius * 0.32, centerY - radius * 0.3);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.stroke();
-      } else if (badgeType === 'graduation') {
-        // 绘制毕业帽（更精致）
+        
+        // 添加高光效果
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = Math.max(2, radius * 0.03);
         ctx.beginPath();
-        // 帽顶
+        ctx.moveTo(centerX - radius * 0.28, centerY - radius * 0.05);
+        ctx.lineTo(centerX - radius * 0.08, centerY + radius * 0.2);
+        ctx.lineTo(centerX + radius * 0.32, centerY - radius * 0.3);
+        ctx.stroke();
+      } else if (badgeType === 'graduation') {
+        // 绘制毕业帽（更精致，增加细节）
+        // 帽顶（带渐变）
+        const capGradient = ctx.createLinearGradient(
+          centerX - radius * 0.45,
+          centerY - radius * 0.25,
+          centerX + radius * 0.45,
+          centerY + radius * 0.05
+        );
+        capGradient.addColorStop(0, '#FFFFFF');
+        capGradient.addColorStop(1, '#E0E0E0');
+        ctx.fillStyle = capGradient;
+        ctx.beginPath();
         ctx.moveTo(centerX - radius * 0.45, centerY - radius * 0.25);
         ctx.lineTo(centerX + radius * 0.45, centerY - radius * 0.25);
         ctx.lineTo(centerX + radius * 0.35, centerY + radius * 0.05);
@@ -556,23 +685,51 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         ctx.closePath();
         ctx.fill();
         
-        // 帽檐
+        // 帽顶边框
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = Math.max(1, radius * 0.02);
+        ctx.stroke();
+        
+        // 帽檐（带阴影效果）
+        ctx.fillStyle = '#1a1a1a';
         ctx.beginPath();
-        ctx.ellipse(centerX, centerY + radius * 0.05, radius * 0.5, radius * 0.15, 0, 0, Math.PI * 2);
+        ctx.ellipse(centerX, centerY + radius * 0.05, radius * 0.52, radius * 0.16, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // 流苏
+        // 流苏（带渐变）
+        const tasselGradient = ctx.createRadialGradient(
+          centerX,
+          centerY + radius * 0.2,
+          0,
+          centerX,
+          centerY + radius * 0.2,
+          radius * 0.12
+        );
+        tasselGradient.addColorStop(0, '#FFD700');
+        tasselGradient.addColorStop(1, '#FFA500');
+        ctx.fillStyle = tasselGradient;
         ctx.beginPath();
         ctx.arc(centerX, centerY + radius * 0.2, radius * 0.12, 0, Math.PI * 2);
         ctx.fill();
       } else if (badgeType === 'official') {
-        // 绘制星星（更精致）
+        // 绘制星星（更精致，带渐变）
+        const starGradient = ctx.createRadialGradient(
+          centerX,
+          centerY,
+          0,
+          centerX,
+          centerY,
+          radius * 0.6
+        );
+        starGradient.addColorStop(0, '#FFFFFF');
+        starGradient.addColorStop(1, '#FFD700');
+        ctx.fillStyle = starGradient;
         ctx.beginPath();
         const starPoints = 5;
-        const innerRadius = radius * 0.35;
+        const innerRadius = radius * 0.38;
         for (let i = 0; i < starPoints * 2; i++) {
           const angle = (i * Math.PI) / starPoints - Math.PI / 2;
-          const r = i % 2 === 0 ? radius * 0.55 : innerRadius;
+          const r = i % 2 === 0 ? radius * 0.58 : innerRadius;
           const px = centerX + Math.cos(angle) * r;
           const py = centerY + Math.sin(angle) * r;
           if (i === 0) {
@@ -583,11 +740,24 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         }
         ctx.closePath();
         ctx.fill();
+        
+        // 添加星星边框
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = Math.max(2, radius * 0.03);
+        ctx.stroke();
       }
       
-      // 绘制底部横幅（仅对 certified 和 official）
-      if (badgeType === 'certified' || badgeType === 'official') {
-        const bannerText = badgeType === 'certified' ? 'CERTIFIED' : 'OFFICIAL';
+      // 绘制底部横幅（对所有类型都添加）
+      let bannerText = '';
+      if (badgeType === 'certified') {
+        bannerText = 'CERTIFIED';
+      } else if (badgeType === 'official') {
+        bannerText = 'OFFICIAL';
+      } else if (badgeType === 'graduation') {
+        bannerText = 'ACCREDITED';
+      }
+      
+      if (bannerText) {
         const bannerHeight = radius * 0.35;
         const bannerWidth = radius * 1.7;
         
@@ -609,12 +779,20 @@ export async function generateCertificateImage(templateData: any): Promise<Buffe
         ctx.closePath();
         ctx.fill();
         
-        // 绘制横幅文字
+        // 绘制横幅文字（增加阴影效果）
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `bold ${Math.floor(radius * 0.18)}px Arial`;
+        ctx.font = `bold ${Math.floor(radius * 0.2)}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(bannerText, centerX, centerY + radius * 0.725);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
       }
       
       ctx.restore();
@@ -645,5 +823,14 @@ function darkenColor(color: string, amount: number): string {
   const r = Math.max(0, parseInt(hex.substr(0, 2), 16) - Math.floor(255 * amount));
   const g = Math.max(0, parseInt(hex.substr(2, 2), 16) - Math.floor(255 * amount));
   const b = Math.max(0, parseInt(hex.substr(4, 2), 16) - Math.floor(255 * amount));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// 辅助函数：变亮颜色
+function lightenColor(color: string, amount: number): string {
+  const hex = color.replace('#', '');
+  const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + Math.floor(255 * amount));
+  const g = Math.min(255, parseInt(hex.substr(2, 2), 16) + Math.floor(255 * amount));
+  const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + Math.floor(255 * amount));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
